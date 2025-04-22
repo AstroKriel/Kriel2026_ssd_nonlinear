@@ -5,8 +5,8 @@ import numpy
 import emcee
 import corner
 import random
+from jormi.ww_io import flash_data, directory_manager
 from jormi.ww_plots import plot_manager
-from jormi.ww_io import flash_data
 import utils
 
 
@@ -43,7 +43,7 @@ def log_posterior(params, time, measured_energy):
   log_likelihood_value = log_likelihood(params, time, measured_energy)
   return log_prior_value + log_likelihood_value
 
-def estimate_params(time, measured_energy, init_params):
+def estimate_params(time, measured_energy, init_params, fig_directory):
   num_walkers     = 100
   num_steps       = 5000
   burn_in_steps   = 1000
@@ -53,15 +53,15 @@ def estimate_params(time, measured_energy, init_params):
   sampler.run_mcmc(param_positions, num_steps)
   samples = sampler.get_chain(discard=burn_in_steps, thin=10, flat=True)
   init_energy, growth_rate, transition_time = numpy.median(samples, axis=0)
-  save_corner_plot(samples)
-  plot_chain_evolution(sampler)
+  save_corner_plot(samples, fig_directory)
+  plot_chain_evolution(sampler, fig_directory)
   return [ init_energy, growth_rate, transition_time ]
 
-def save_corner_plot(samples):
+def save_corner_plot(samples, fig_directory):
   fig = corner.corner(samples)
-  plot_manager.save_figure(fig, "dev_mcmc_corner_plot.png")
+  plot_manager.save_figure(fig, f"{fig_directory}/dev_mcmc_corner_plot.png")
 
-def plot_chain_evolution(sampler):
+def plot_chain_evolution(sampler, fig_directory):
   chain = sampler.get_chain()
   _, num_walkers, num_params = chain.shape
   fig, axs = plot_manager.create_figure(num_rows=num_params, axis_shape=(6, 10), share_x=True)
@@ -70,7 +70,7 @@ def plot_chain_evolution(sampler):
     for walker_index in range(num_walkers):
       ax.plot(chain[:, walker_index, param_index], alpha=0.3, lw=0.5)
   axs[-1].set_xlabel("steps")
-  plot_manager.save_figure(fig, "dev_mcmc_chain_evolution.png")
+  plot_manager.save_figure(fig, f"{fig_directory}/dev_mcmc_chain_evolution.png")
 
 def generate_data(num_points, time_bounds, init_energy, growth_rate, transition_time):
   time = utils.generate_uniform_domain(
@@ -103,18 +103,16 @@ def load_data():
 ## ###############################################################
 def main():
   fig, ax = plot_manager.create_figure(axis_shape=(6, 10))
+  fig_directory = "dev_plots"
+  directory_manager.init_directory(fig_directory)
   init_energy     = -13
   growth_rate     = 9/100
   transition_time = 120
   true_params = [ init_energy, growth_rate, transition_time ]
   # time, measured_energy = generate_data(100, [0, 500], init_energy, growth_rate, transition_time)
   time, measured_energy = load_data()
-  init_params = [
-    random.uniform(0, 3) * init_energy,
-    random.uniform(0, 3) * growth_rate,
-    random.uniform(0, 3) * transition_time
-  ]
-  mcmc_params = estimate_params(time, measured_energy, init_params)
+  init_params = [-20, 0.5, 50]
+  mcmc_params = estimate_params(time, measured_energy, init_params, fig_directory)
   print([
     f"{param:.3f}"
     for param in mcmc_params
@@ -122,12 +120,12 @@ def main():
   estimated_energy = model(time, mcmc_params)
   my_estimated_energy = model(time, true_params)
   ax.plot(time, measured_energy, color="blue", marker="o", ms=5, ls="", zorder=3, label="measured values")
-  ax.plot(time, estimated_energy, color="red", marker="o", ms=5, ls="-", lw=2, zorder=3, label="MCMC estimated model")
-  ax.plot(time, my_estimated_energy, color="green", marker="o", ms=5, ls="-", lw=2, zorder=3, label="my estimated model")
+  ax.plot(time, estimated_energy, color="red", ls="-", lw=2, zorder=3, label="MCMC estimated model")
+  ax.plot(time, my_estimated_energy, color="green", ls="-", lw=2, zorder=3, label="my estimated model")
   ax.set_xlabel("time")
   ax.set_ylabel("energy")
   ax.legend(loc="lower right")
-  plot_manager.save_figure(fig, "dev_estimate_using_mcmc.png")
+  plot_manager.save_figure(fig, f"{fig_directory}/dev_estimate_using_mcmc.png")
 
 
 ## ###############################################################

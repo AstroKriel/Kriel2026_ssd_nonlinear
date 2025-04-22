@@ -13,6 +13,6 @@ dependencies = [
 ]
 
 [tool.uv.sources]
-jormi = { path = "../../sindri/jormi" }
-bifrost = { path = "../../sindri/bifrost" }
-vegtamr = { path = "../../sindri/vegtamr" }
+jormi = { path = "../../sindri/python/jormi" }
+bifrost = { path = "../../sindri/python/bifrost" }
+vegtamr = { path = "../../sindri/python/vegtamr" }

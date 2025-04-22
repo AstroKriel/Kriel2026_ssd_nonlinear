@@ -5,7 +5,7 @@ requires-python = ">=3.11"
 [[package]]
 name = "bifrost"
 version = "0.1.0"
-source = { directory = "../../sindri/bifrost" }
+source = { directory = "../../sindri/python/bifrost" }
 dependencies = [
     { name = "h5py" },
 ]
@@ -198,7 +198,7 @@ wheels = [
 [[package]]
 name = "jormi"
 version = "0.1.0"
-source = { directory = "../../sindri/jormi" }
+source = { directory = "../../sindri/python/jormi" }
 dependencies = [
     { name = "cmasher" },
     { name = "h5py" },
@@ -298,11 +298,11 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "bifrost", directory = "../../sindri/bifrost" },
+    { name = "bifrost", directory = "../../sindri/python/bifrost" },
     { name = "corner", specifier = ">=2.2.3" },
     { name = "emcee", specifier = ">=3.1.6" },
-    { name = "jormi", directory = "../../sindri/jormi" },
-    { name = "vegtamr", directory = "../../sindri/vegtamr" },
+    { name = "jormi", directory = "../../sindri/python/jormi" },
+    { name = "vegtamr", directory = "../../sindri/python/vegtamr" },
 ]
 
 [[package]]
@@ -631,7 +631,7 @@ wheels = [
 [[package]]
 name = "vegtamr"
 version = "0.1.0"
-source = { directory = "../../sindri/vegtamr" }
+source = { directory = "../../sindri/python/vegtamr" }
 dependencies = [
     { name = "matplotlib" },
     { name = "rlic" },
