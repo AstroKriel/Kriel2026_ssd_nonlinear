@@ -202,26 +202,61 @@ class BaseMCMCModel:
     X, Y = numpy.meshgrid(x, y)
     positions = numpy.vstack([X.ravel(), Y.ravel()])
     Z = kde_2d(positions).reshape(X.shape)
-    ax.contour(X, Y, Z, colors="red", linewidths=0.8)
+    ax.contour(X, Y, Z, colors="red", linewidths=2.0)
 
-  def _plot_kde(self, ax, row_param_index, col_param_index, num_points=100):
-    row_data = self.samples[:, row_param_index]
-    col_data = self.samples[:, col_param_index]
-    x = numpy.linspace(col_data.min(), col_data.max(), num_points)
-    y = numpy.linspace(row_data.min(), row_data.max(), num_points)
-    X, Y = numpy.meshgrid(x, y)
-    grid_coords = numpy.column_stack([X.ravel(), Y.ravel()])
-    param_means = self.samples.mean(axis=0)
-    grid_full = numpy.tile(param_means, (grid_coords.shape[0], 1))
-    grid_full[:, col_param_index] = grid_coords[:, 0]
-    grid_full[:, row_param_index] = grid_coords[:, 1]
-    Z = self.kde(grid_full.T).reshape(num_points, num_points)
-    ax.contour(X, Y, Z, colors="black", linewidths=0.8)
+  # def _plot_kde(self, ax, row_param_index, col_param_index, num_points=100):
+  #   row_data = self.samples[:, row_param_index]
+  #   col_data = self.samples[:, col_param_index]
+  #   x = numpy.linspace(col_data.min(), col_data.max(), num_points)
+  #   y = numpy.linspace(row_data.min(), row_data.max(), num_points)
+  #   X, Y = numpy.meshgrid(x, y)
+  #   grid_coords = numpy.column_stack([X.ravel(), Y.ravel()])
+  #   param_means = self.samples.mean(axis=0)
+  #   grid_full = numpy.tile(param_means, (grid_coords.shape[0], 1))
+  #   grid_full[:, col_param_index] = grid_coords[:, 0]
+  #   grid_full[:, row_param_index] = grid_coords[:, 1]
+  #   Z = self.kde(grid_full.T).reshape(num_points, num_points)
+  #   ax.contour(X, Y, Z, colors="black", linewidths=0.8)
+  #   self._plot_kde_per_slice(ax, row_param_index, col_param_index, num_points=100)
+
+  def _plot_kde(self, ax, row_param_index, col_param_index):
+    print(f"Estimating KDE projection: axs[{row_param_index}][{col_param_index}]")
+    Xi, Xj, Z = compute_2d_kde_projection(
+        full_kde = self.kde,
+        samples = self.samples,
+        i=col_param_index,
+        j=row_param_index,
+        num_points=30,
+        num_marginal_samples=50,
+    )
+    ax.contour(Xi, Xj, Z, colors="black", linewidths=1.0)
     self._plot_kde_per_slice(ax, row_param_index, col_param_index, num_points=100)
 
   def _compute_scaled_kde(self):
     print("Estimating KDE...")
     self.kde = gaussian_kde(self.samples.T, bw_method="scott")
+
+def compute_2d_kde_projection(full_kde, samples, i, j, num_points, num_marginal_samples):
+    ndim = samples.shape[1]
+    other_indices = [k for k in range(ndim) if k != i and k != j]
+    xi = numpy.linspace(samples[:, i].min(), samples[:, i].max(), num_points)
+    xj = numpy.linspace(samples[:, j].min(), samples[:, j].max(), num_points)
+    Xi, Xj = numpy.meshgrid(xi, xj)
+    X_flat = Xi.ravel()
+    Y_flat = Xj.ravel()
+    n_grid = X_flat.shape[0]
+    # Draw marginal samples
+    marginal_values = samples[numpy.random.choice(samples.shape[0], size=num_marginal_samples)][..., other_indices]
+    # Repeat grid and marginal samples to build full KDE input
+    grid_points = numpy.zeros((n_grid * num_marginal_samples, ndim))
+    grid_points[:, i] = numpy.repeat(X_flat, num_marginal_samples)
+    grid_points[:, j] = numpy.repeat(Y_flat, num_marginal_samples)
+    marginal_tiled = numpy.tile(marginal_values, (n_grid, 1))
+    grid_points[:, other_indices] = marginal_tiled
+    # Evaluate and reshape
+    Z_vals = full_kde(grid_points.T)
+    Z_avg = Z_vals.reshape(n_grid, num_marginal_samples).mean(axis=1).reshape(num_points, num_points)
+    return Xi, Xj, Z_avg
 
 
 ## END OF MODULE
