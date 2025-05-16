@@ -26,7 +26,13 @@ class BaseMCMCRoutine:
   def _check_params_are_valid(self, param_vector: tuple[float, ...], print_errors: bool = False):
     raise NotImplementedError()
 
-  def _annotate_fit(self, axs):
+  def _get_output_param_samples(self, samples: numpy.ndarray) -> numpy.ndarray:
+    return samples
+
+  def _get_output_param_labels(self) -> list[str]:
+    return self.fitted_param_labels
+
+  def _annotate_fitted_params(self, axs):
     pass
 
   def __init__(
@@ -36,24 +42,28 @@ class BaseMCMCRoutine:
       x_values         : list | numpy.ndarray,
       y_values         : list | numpy.ndarray,
       initial_params   : tuple[float, ...],
-      likelihood_sigma : float | list | numpy.ndarray = 1.0,
+      prior_kde        : float | None = None,
+      likelihood_sigma : float = 1.0,
       y_data_label     : str | None = None,
-      param_labels     : list[str] = [],
+      fitted_param_labels     : list[str] = [],
       verbose          : bool = True
     ):
-    self.output_directory = output_directory
-    self.routine_name     = routine_name
-    self.x_values         = numpy.asarray(x_values)
-    self.y_values         = numpy.asarray(y_values)
-    self.initial_params   = initial_params
-    self.num_params       = len(self.initial_params)
-    self.likelihood_sigma = likelihood_sigma
-    self.y_data_label     = y_data_label
-    self.param_labels     = param_labels
-    self.verbose          = verbose
+    self.output_directory    = output_directory
+    self.routine_name        = routine_name
+    self.x_values            = numpy.asarray(x_values)
+    self.y_values            = numpy.asarray(y_values)
+    self.initial_params      = initial_params
+    self.num_params          = len(self.initial_params)
+    self.prior_kde           = prior_kde
+    self.likelihood_sigma    = likelihood_sigma
+    self.y_data_label        = y_data_label
+    self.fitted_param_labels = fitted_param_labels
+    self.verbose             = verbose
     self._validate_inputs()
-    self.posterior_samples = None
-    self.posterior_kde     = None
+    self.fitted_posterior_samples = None
+    self.fitted_posterior_kde     = None
+    self.output_posterior_samples = None
+    self.output_posterior_kde     = None
 
   def _validate_inputs(self):
     if not isinstance(self.x_values, (list, numpy.ndarray)):
@@ -62,9 +72,8 @@ class BaseMCMCRoutine:
       raise ValueError(f"`y_values` should be either a list or array of values.")
     if len(self.x_values) != len(self.y_values):
       raise ValueError(f"`x_values` and `y_values` should be the same length, but got {len(self.x_values)} vs {len(self.y_values)}.")
-    if not isinstance(self.likelihood_sigma, (float, int)):
+    if not isinstance(self.likelihood_sigma, float):
       raise ValueError(f"`likelihood_sigma` should be a scalar.")
-    self.likelihood_sigma = float(self.likelihood_sigma)
 
   def sample_posterior(
       self,
@@ -80,19 +89,24 @@ class BaseMCMCRoutine:
     mcmc_sampler = emcee.EnsembleSampler(self.num_walkers, self.num_params, self._log_posterior)
     mcmc_sampler.run_mcmc(perturbed_params, num_steps)
     self.raw_chain = mcmc_sampler.get_chain()
-    self.posterior_samples = mcmc_sampler.get_chain(discard=burn_in_steps, thin=10, flat=True)
-    self._compute_posterior_kde()
-    plot_chain_evolution.PlotChainEvolution(self).plot()
-    # plot_model_posteriors.PlotModelPosteriors(self).plot()
-    plot_model_fits.PlotModelFits(self).plot()
-
-  def print_log_likelihood(self, param_vector):
-    ll_value = self._log_likelihood(param_vector)
-    print(f"param_vector = ({param_vector}) yields log-likelihood = {ll_value:.2e}")
+    self.fitted_posterior_samples = mcmc_sampler.get_chain(discard=burn_in_steps, thin=10, flat=True)
+    self.output_posterior_samples = self._get_output_param_samples(self.fitted_posterior_samples)
+    if numpy.array_equal(self.output_posterior_samples, self.fitted_posterior_samples):
+      print("Estimating the KDE of only the fitted posterior samples...")
+      self.fitted_posterior_kde = gaussian_kde(self.fitted_posterior_samples.T, bw_method="scott")
+      self.output_posterior_kde = self.fitted_posterior_kde
+    else:
+      print("Estimating the KDE of both the fitted and output posterior samples...")
+      self.fitted_posterior_kde = gaussian_kde(self.fitted_posterior_samples.T, bw_method="scott")
+      self.output_posterior_kde = gaussian_kde(self.output_posterior_samples.T, bw_method="scott")
+    self._make_plots()
 
   def _log_prior(self, param_vector):
     if not self._check_params_are_valid(param_vector):
       return -numpy.inf
+    if self.prior_kde is not None:
+      param_array = numpy.asarray(param_vector)
+      return self.prior_kde.logpdf(param_array.reshape(-1, 1))[0]
     return 0
 
   def _log_likelihood(self, param_vector):
@@ -114,9 +128,10 @@ class BaseMCMCRoutine:
     ll_value = self._log_likelihood(param_vector)
     return lp_value + ll_value
 
-  def _compute_posterior_kde(self):
-    print("Estimating KDE of posterior samples...")
-    self.posterior_kde = gaussian_kde(self.posterior_samples.T, bw_method="scott")
+  def _make_plots(self):
+    plot_chain_evolution.PlotChainEvolution(self).plot()
+    plot_model_posteriors.PlotModelPosteriors(self).plot()
+    plot_model_fits.PlotModelFits(self).plot()
 
 
 ## END OF MODULE

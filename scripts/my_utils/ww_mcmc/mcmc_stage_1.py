@@ -32,24 +32,26 @@ class MCMCStage1Routine(base_mcmc.BaseMCMCRoutine):
     self.log10_e = numpy.log10(numpy.exp(1))
     self.max_time = numpy.max(x_values)
     super().__init__(
-      output_directory = output_directory,
-      routine_name     = "stage1",
-      verbose          = verbose,
-      x_values         = x_values,
-      y_values         = numpy.log10(y_values),
-      initial_params   = (-20, 0.85 * numpy.max(x_values), 0.5),
-      y_data_label     = r"$\log_{10}(E_{\mathrm{mag}})$",
-      param_labels     = [
+      output_directory    = output_directory,
+      routine_name        = "stage1",
+      verbose             = verbose,
+      x_values            = x_values,
+      y_values            = numpy.log10(y_values),
+      initial_params      = (-20, 0.85 * numpy.max(x_values), 0.5),
+      y_data_label        = r"$\log_{10}(E_{\mathrm{mag}})$",
+      fitted_param_labels = [
         r"$\log_{10}(E_{\mathrm{init}})$",
+        r"$\gamma$",
         r"$t_{\mathrm{approx}}$",
-        r"$\gamma$"
       ]
     )
 
   def _model(self, param_vector):
     (log10_init_energy, transition_time, gamma) = param_vector
+    ## mask reduced ssd phases
     mask_exp = self.x_values < transition_time
     mask_sat = ~mask_exp
+    ## model energy evolution
     log10_energy = numpy.zeros_like(self.x_values)
     log10_energy[mask_exp] = log10_init_energy + self.log10_e * gamma * self.x_values[mask_exp]
     log10_energy[mask_sat] = log10_init_energy + self.log10_e * gamma * transition_time
@@ -69,10 +71,10 @@ class MCMCStage1Routine(base_mcmc.BaseMCMCRoutine):
       return False
     return True
 
-  def _annotate_fit(self, axs):
-    tt_samples    = self.posterior_samples[:,1]
-    gamma_samples = self.log10_e * numpy.array(self.posterior_samples[:,2])
-    plot_param_percentiles(axs[1], gamma_samples, orientation="horizontal")
+  def _annotate_fitted_params(self, axs):
+    tt_samples = self.fitted_posterior_samples[:,1]
+    log10_gamma_samples = self.log10_e * numpy.array(self.fitted_posterior_samples[:,2])
+    plot_param_percentiles(axs[1], log10_gamma_samples, orientation="horizontal")
     for row_index in range(len(axs)):
       plot_param_percentiles(axs[row_index], tt_samples, orientation="vertical")
 
