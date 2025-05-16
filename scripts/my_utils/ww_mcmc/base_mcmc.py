@@ -26,6 +26,9 @@ class BaseMCMCRoutine:
   def _check_params_are_valid(self, param_vector: tuple[float, ...], print_errors: bool = False):
     raise NotImplementedError()
 
+  def _annotate_fit(self, axs):
+    pass
+
   def __init__(
       self,
       output_directory : str | Path,
@@ -34,6 +37,7 @@ class BaseMCMCRoutine:
       y_values         : list | numpy.ndarray,
       initial_params   : tuple[float, ...],
       likelihood_sigma : float | list | numpy.ndarray = 1.0,
+      y_data_label     : str | None = None,
       param_labels     : list[str] = [],
       verbose          : bool = True
     ):
@@ -44,6 +48,7 @@ class BaseMCMCRoutine:
     self.initial_params   = initial_params
     self.num_params       = len(self.initial_params)
     self.likelihood_sigma = likelihood_sigma
+    self.y_data_label     = y_data_label
     self.param_labels     = param_labels
     self.verbose          = verbose
     self._validate_inputs()

@@ -46,7 +46,7 @@ def routine(sim_directory, level1_output_directory, verbose=True):
   ## load and interpolate data
   data_dict = ww_sims.load_data(sim_directory, num_samples=70)
   ## stage 1 MCMC fitter
-  stage1_mcmc = ww_mcmc.MCMCStage1(
+  stage1_mcmc = ww_mcmc.MCMCStage1Routine(
     output_directory = level2_output_directory,
     x_values         = data_dict["time"],
     y_values         = data_dict["magnetic_energy"],
@@ -54,7 +54,7 @@ def routine(sim_directory, level1_output_directory, verbose=True):
   )
   stage1_mcmc.sample_posterior()
   # ## stage 2 MCMC fitter
-  # stage2_mcmc = ww_mcmc.MCMCStage2(
+  # stage2_mcmc = ww_mcmc.MCMCStage2Routine(
   #   output_directory = level2_output_directory,
   #   x_values         = time,
   #   y_values         = measured_energy,

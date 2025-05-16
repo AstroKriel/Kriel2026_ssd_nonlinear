@@ -13,7 +13,7 @@ from . import base_mcmc
 ## STAGE 2 MCMC FITTER
 ## ###############################################################
 
-class MCMCStage2(base_mcmc.BaseMCMCRoutine):
+class MCMCStage2Routine(base_mcmc.BaseMCMCRoutine):
   def __init__(self, output_directory, x_values, y_values, stage1_params, verbose):
     log10_init_energy, self.transition_time, self.gamma = stage1_params
     self.init_energy       = 10**(log10_init_energy)

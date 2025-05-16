@@ -5,7 +5,6 @@
 import numpy
 from jormi.ww_plots import plot_manager
 from jormi.ww_io import io_manager
-from . import base_mcmc
 from . import base_plotter
 
 
@@ -18,24 +17,24 @@ class PlotModelFits(base_plotter.BaseMCMCPlotter):
   def __init__(
       self,
       mcmc_routine,
-      num_curves   : int = 100,
-      y_label_base : str | None = None
+      num_curves : int = 100,
     ):
-    self.num_curves   = num_curves
-    self.y_label_base = y_label_base
     super().__init__(mcmc_routine)
+    self.num_curves    = num_curves
+    self.y_data_label  = self.mcmc_routine.y_data_label
+    self._annotate_fit = self.mcmc_routine._annotate_fit
 
   def plot(self):
     fig, axs = plot_manager.create_figure(num_rows=3, share_x=True)
     self._plot_data(axs)
     self._plot_model(axs)
     self._plot_residuals(axs)
-    self._add_custom_labels(axs)
-    if self.y_label_base is not None:
-      axs[0].set_ylabel(self.y_label_base)
-      stripped_y_label_base = self.y_label_base.strip("$")
-      axs[1].set_ylabel(r"$\frac{d}{dt}\," + stripped_y_label_base + "$")
-    axs[2].set_ylabel(r"residuals")
+    self._annotate_fit(axs)
+    if self.y_data_label is not None:
+      axs[0].set_ylabel(self.y_data_label)
+      stripped_y_data_label = self.y_data_label.strip("$")
+      axs[1].set_ylabel(r"$\frac{d}{dt}\," + stripped_y_data_label + "$")
+    axs[2].set_ylabel(r"median residuals")
     axs[2].set_xlabel(r"time")
     fig_name = f"{self.mcmc_routine.routine_name}_fit.png"
     fig_file_path = io_manager.combine_file_path_parts([self.mcmc_routine.output_directory, fig_name])
@@ -46,7 +45,7 @@ class PlotModelFits(base_plotter.BaseMCMCPlotter):
     style = dict(color="blue", marker="o", ms=5, ls="-", lw=1.0, zorder=3)
     axs[0].plot(self.mcmc_routine.x_values, self.mcmc_routine.y_values, **style)
     axs[1].plot(self.mcmc_routine.x_values, dy_dx_values, **style)
-    axs[2].axhline(y=0, color="black", ls="--", lw=1.5, zorder=0)
+    axs[1].axhline(y=0, color="black", ls="--", lw=1.5, zorder=0)
 
   def _plot_model(self, axs):
     rng = numpy.random.default_rng(seed=42)
@@ -65,13 +64,10 @@ class PlotModelFits(base_plotter.BaseMCMCPlotter):
 
   def _plot_residuals(self, axs):
     median_params = numpy.median(self.mcmc_routine.posterior_samples, axis=0)
-    model_y = self.mcmc_routine._model(median_params)
-    residuals = self.mcmc_routine.y_values - model_y
+    model_y       = self.mcmc_routine._model(median_params)
+    residuals     = self.mcmc_routine.y_values - model_y
     axs[2].plot(self.mcmc_routine.x_values, residuals, color="red", lw=1.5, zorder=3)
     axs[2].axhline(y=0, color="black", ls="--", lw=1.5, zorder=0)
-
-  def _add_custom_labels(self, axs):
-    pass
 
 
 ## END OF MODULE
