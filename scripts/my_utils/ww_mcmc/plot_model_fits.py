@@ -66,7 +66,7 @@ class PlotModelFits(base_plotter.BaseMCMCPlotter):
     median_params = numpy.median(self.mcmc_routine.posterior_samples, axis=0)
     model_y       = self.mcmc_routine._model(median_params)
     residuals     = self.mcmc_routine.y_values - model_y
-    axs[2].plot(self.mcmc_routine.x_values, residuals, color="red", lw=1.5, zorder=3)
+    axs[2].plot(self.mcmc_routine.x_values, residuals, color="red", marker="o", ms=5, ls="-", lw=1.0, zorder=3)
     axs[2].axhline(y=0, color="black", ls="--", lw=1.5, zorder=0)
 
 

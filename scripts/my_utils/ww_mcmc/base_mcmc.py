@@ -83,7 +83,7 @@ class BaseMCMCRoutine:
     self.posterior_samples = mcmc_sampler.get_chain(discard=burn_in_steps, thin=10, flat=True)
     self._compute_posterior_kde()
     plot_chain_evolution.PlotChainEvolution(self).plot()
-    plot_model_posteriors.PlotModelPosteriors(self).plot()
+    # plot_model_posteriors.PlotModelPosteriors(self).plot()
     plot_model_fits.PlotModelFits(self).plot()
 
   def print_log_likelihood(self, param_vector):

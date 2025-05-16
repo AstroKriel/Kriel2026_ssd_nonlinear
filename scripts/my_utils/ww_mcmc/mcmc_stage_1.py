@@ -7,6 +7,23 @@ from . import base_mcmc
 
 
 ## ###############################################################
+## HELPER FUNCTION
+## ###############################################################
+
+def plot_param_percentiles(ax, samples, orientation):
+  p16, p50, p84 = numpy.percentile(samples, [16, 50, 84])
+  if   "h" in orientation.lower():
+    ax_line = ax.axhline
+    ax_span = ax.axhspan
+  elif "v" in orientation.lower():
+    ax_line = ax.axvline
+    ax_span = ax.axvspan
+  else: raise ValueError("`orientation` must either be `horizontal` (`h`) or `vertical` (`v`).")
+  ax_line(p50, color="black", ls=":", lw=1.5, zorder=5)
+  ax_span(p16, p84, color="black", ls="-", lw=1.5, alpha=0.3, zorder=4)
+
+
+## ###############################################################
 ## STAGE 1 MCMC FITTER
 ## ###############################################################
 
@@ -53,10 +70,11 @@ class MCMCStage1Routine(base_mcmc.BaseMCMCRoutine):
     return True
 
   def _annotate_fit(self, axs):
-    gamma_samples = self.posterior_samples[:,2]
-    gamma_p16, gamma_p50, gamma_p84 = numpy.percentile(gamma_samples, [16, 50, 84])
-    axs[1].axhspan(self.log10_e * gamma_p16, self.log10_e * gamma_p84, color="red", ls="-", lw=1.5, alpha=0.3)
-    axs[1].axhline(self.log10_e * gamma_p50, color="red", ls=":", lw=1.5)
+    tt_samples    = self.posterior_samples[:,1]
+    gamma_samples = self.log10_e * numpy.array(self.posterior_samples[:,2])
+    plot_param_percentiles(axs[1], gamma_samples, orientation="horizontal")
+    for row_index in range(len(axs)):
+      plot_param_percentiles(axs[row_index], tt_samples, orientation="vertical")
 
 
 ## END OF MODULE
