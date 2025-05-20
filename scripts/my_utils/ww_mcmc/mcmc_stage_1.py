@@ -61,29 +61,46 @@ class MCMCStage1Routine(base_mcmc.BaseMCMCRoutine):
     )
 
   def _model(self, param_vector):
-    (log10_init_energy, gamma, transition_time) = param_vector
-    ## mask reduced ssd phases
-    mask_exp = self.x_values < transition_time
-    mask_sat = ~mask_exp
-    ## model energy evolution
-    log10_energy = numpy.zeros_like(self.x_values)
-    log10_energy[mask_exp] = log10_init_energy + self.log10_e * gamma * self.x_values[mask_exp]
-    log10_energy[mask_sat] = log10_init_energy + self.log10_e * gamma * transition_time
+    param_vector = numpy.atleast_2d(param_vector)
+    log10_init_energy, gamma, transition_time = param_vector.T
+
+    x_vals        = self.x_values
+    n_walkers     = param_vector.shape[0]
+    n_times       = x_vals.shape[0]
+
+    # Reshape for broadcasting
+    x_vals_2d     = x_vals[None, :]          # (1, n_times)
+    gamma_2d      = gamma[:, None]            # (n_walkers, 1)
+    transition_2d = transition_time[:, None]  # (n_walkers, 1)
+    log10_init_2d = log10_init_energy[:, None]  # (n_walkers, 1)
+
+    mask_exp = x_vals_2d < transition_2d       # (n_walkers, n_times)
+    mask_sat = ~mask_exp                        # (n_walkers, n_times)
+
+    log10_energy = numpy.empty((n_walkers, n_times))
+
+    # Calculate exponential phase values (shape matches mask_exp)
+    vals_exp = log10_init_2d + self.log10_e * gamma_2d * x_vals_2d
+    log10_energy[mask_exp] = vals_exp[mask_exp]
+
+    # Calculate saturated phase values — broadcast to full shape
+    vals_sat = log10_init_2d + self.log10_e * gamma_2d * transition_2d  # (n_walkers, 1)
+    vals_sat = numpy.broadcast_to(vals_sat, (n_walkers, n_times))       # broadcast to (n_walkers, n_times)
+    log10_energy[mask_sat] = vals_sat[mask_sat]
+
     return log10_energy
 
-  def _check_params_are_valid(self, param_vector, print_errors=False):
-    (log10_init_energy, gamma, transition_time) = param_vector
-    errors = []
-    if not (-30 < log10_init_energy < -5):
-      errors.append(f"`log10_init_energy` ({log10_init_energy:.2f}) must be between -20 and -5.")
-    if not (0 < gamma < 2):
-      errors.append(f"`gamma` ({gamma:.2f}) must be between 0 and 2.")
-    if not (0.25 * self.max_time < transition_time < 0.9 * self.max_time):
-      errors.append(f"`transition_time` ({transition_time:.2f}) must be between 25 and 90 percent of `max_time` ({self.max_time:.2f}).")
-    if len(errors) > 0:
-      if print_errors: print("\n".join(errors))
-      return False
-    return True
+  def _check_params_are_valid(self, param_vector):
+    param_vector = numpy.atleast_2d(param_vector)
+    log10_init_energy, gamma, transition_time = param_vector.T
+    valid_mask = (
+      (-30 < log10_init_energy) & (log10_init_energy < -5) &
+      (0 < gamma) & (gamma < 2) &
+      (0.25 * self.max_time < transition_time) & (transition_time < 0.9 * self.max_time)
+    )
+    if param_vector.shape[0] == 1:
+      return valid_mask[0]
+    return valid_mask
 
   def _annotate_fitted_params(self, axs):
     log10_gamma_samples     = self.log10_e * self.fitted_posterior_samples[:,1]

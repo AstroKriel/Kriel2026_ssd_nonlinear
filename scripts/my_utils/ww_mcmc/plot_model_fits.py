@@ -13,11 +13,7 @@ from jormi.ww_io import io_manager
 
 class PlotModelFits:
 
-  def __init__(
-      self,
-      mcmc_routine,
-      num_curves : int = 100,
-    ):
+  def __init__(self, mcmc_routine, num_curves: int = 100):
     self.mcmc_routine            = mcmc_routine
     self.num_curves              = num_curves
     self.y_data_label            = self.mcmc_routine.y_data_label
@@ -56,8 +52,8 @@ class PlotModelFits:
       replace = False
     )
     modelled_curves = numpy.array([
-      self.mcmc_routine._model(self.mcmc_routine.fitted_posterior_samples[sample_index])
-      for sample_index in random_indices
+      self.mcmc_routine._model(self.mcmc_routine.fitted_posterior_samples[random_index]).squeeze()
+      for random_index in random_indices
     ])
     p16, p50, p84 = numpy.percentile(modelled_curves, [16, 50, 84], axis=0)
     axs[0].plot(self.mcmc_routine.x_values, p50, color="red", lw=2, zorder=4)
@@ -65,10 +61,11 @@ class PlotModelFits:
 
   def _plot_residuals(self, axs):
     median_params = numpy.median(self.mcmc_routine.fitted_posterior_samples, axis=0)
-    model_y       = self.mcmc_routine._model(median_params)
-    residuals     = self.mcmc_routine.y_values - model_y
+    model_y = self.mcmc_routine._model(median_params).squeeze()
+    residuals = self.mcmc_routine.y_values - model_y
     axs[2].plot(self.mcmc_routine.x_values, residuals, color="red", marker="o", ms=5, ls="-", lw=1.0, zorder=3)
     axs[2].axhline(y=0, color="black", ls="--", lw=1.5, zorder=0)
+
 
 
 ## END OF MODULE

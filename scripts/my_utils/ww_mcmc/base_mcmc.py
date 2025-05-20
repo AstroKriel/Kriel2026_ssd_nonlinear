@@ -9,6 +9,8 @@ import numpy
 import emcee
 from tqdm import tqdm
 from pathlib import Path
+from functools import partial
+from collections import deque
 from scipy.stats import gaussian_kde
 from . import plot_chain_evolution
 from . import plot_model_posteriors
@@ -21,11 +23,14 @@ from . import plot_model_fits
 
 class BaseMCMCRoutine:
 
-  def _model(self, param_vector: tuple[float, ...]):
+  def _model(self, param_vectors: tuple[float, ...]):
     raise NotImplementedError()
 
-  def _check_params_are_valid(self, param_vector: tuple[float, ...], print_errors: bool = False):
+  def _check_params_are_valid(self, param_vectors: tuple[float, ...], print_errors: bool = False):
     raise NotImplementedError()
+
+  def _get_kde_params(self, param_vectors: tuple[float, ...]) -> numpy.ndarray:
+    return numpy.asarray(param_vectors)
 
   def _get_output_params(self) -> tuple[numpy.ndarray, list[str]]:
     return self.fitted_posterior_samples, self.fitted_param_labels
@@ -87,17 +92,19 @@ class BaseMCMCRoutine:
       num_steps     : int = 3000,
       burn_in_steps : int = 1000,
     ):
-    if not self._check_params_are_valid(self.initial_params, print_errors=True):
+    if not self._check_params_are_valid(self.initial_params):
       raise ValueError("Initial guess is invalid!")
     print("Estimating the posterior...")
     self.num_walkers = num_walkers
     perturbed_params = numpy.array(self.initial_params) + 1e-4 * numpy.random.randn(self.num_walkers, self.num_params)
-    mcmc_sampler = emcee.EnsembleSampler(self.num_walkers, self.num_params, self._log_posterior)
-    for _ in tqdm(
-      mcmc_sampler.sample(perturbed_params, iterations=num_steps),
-      total = num_steps
-      ):
-      pass
+    mcmc_sampler = emcee.EnsembleSampler(num_walkers, self.num_params, self._log_posterior, vectorize=True)
+    deque(
+      tqdm(
+        mcmc_sampler.sample(perturbed_params, iterations=num_steps),
+        total = num_steps
+      ),
+      maxlen = 0
+    )
     self.raw_chain = mcmc_sampler.get_chain()
     self.fitted_posterior_samples = mcmc_sampler.get_chain(discard=burn_in_steps, thin=10, flat=True)
     self.output_posterior_samples, self.output_param_labels = self._get_output_params()
@@ -111,36 +118,39 @@ class BaseMCMCRoutine:
       self.output_posterior_kde = gaussian_kde(self.output_posterior_samples.T, bw_method="scott")
     self._make_plots()
 
-  def _log_posterior(self, param_vector):
-    lp_value = self._log_prior(param_vector)
-    if not numpy.isfinite(lp_value): return -numpy.inf
-    ll_value = self._log_likelihood(param_vector)
-    return lp_value + ll_value
+  def _log_posterior(self, param_vectors):
+    lp_values = self._log_prior(param_vectors)
+    mask = numpy.isfinite(lp_values)
+    ll_values = numpy.full_like(lp_values, -numpy.inf)
+    ll_values[mask] = self._log_likelihood(param_vectors[mask])
+    return lp_values + ll_values
 
-  def _log_prior(self, param_vector):
-    if not self._check_params_are_valid(param_vector):
-      return -numpy.inf
+  def _log_prior(self, param_vectors):
+    validity_mask = self._check_params_are_valid(param_vectors)
+    lp_values = numpy.full(param_vectors.shape[0], -numpy.inf)
     if self.prior_kde is not None:
-      kde_vector = self._get_kde_eval_params(param_vector)
-      lp_value = self.prior_kde.logpdf(kde_vector.reshape(-1, 1))[0]
-      return lp_value
-    return 0
+      valid_params = numpy.atleast_2d(param_vectors[validity_mask])
+      kde_vector = self._get_kde_params(valid_params)
+      kde_logpdfs = self.prior_kde.logpdf(kde_vector.T)
+      lp_values[validity_mask] = kde_logpdfs
+    else: lp_values[validity_mask] = 0.0
+    return lp_values
 
-  def _get_kde_eval_params(self, param_vector: tuple[float, ...]) -> numpy.ndarray:
-    return numpy.asarray(param_vector)
-
-  def _log_likelihood(self, param_vector):
-    if not self._check_params_are_valid(param_vector):
-      return -numpy.inf
+  def _log_likelihood(self, param_vectors):
+    param_vectors = numpy.atleast_2d(param_vectors)
+    validity_mask = self._check_params_are_valid(param_vectors)
+    ll_values = numpy.full(param_vectors.shape[0], -numpy.inf)
+    if not numpy.any(validity_mask):
+      return ll_values
     try:
-      residual = self.y_values - self._model(param_vector)
-      ll_value = -0.5 * numpy.sum(numpy.square(residual / self.likelihood_sigma))
-      if not numpy.isfinite(ll_value):
-        return -numpy.inf
-      return ll_value
+      valid_params = param_vectors[validity_mask]
+      models = self._model(valid_params)
+      y_vals = numpy.asarray(self.y_values)
+      residuals = y_vals[None, :] - models
+      ll_values[validity_mask] = -0.5 * numpy.sum((residuals / self.likelihood_sigma) ** 2, axis=1)
     except Exception as error:
-      print("Error in likelihood:", error, param_vector)
-      return -numpy.inf
+      raise
+    return ll_values
 
   def _make_plots(self):
     plot_chain_evolution.PlotChainEvolution(self).plot()

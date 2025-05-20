@@ -62,9 +62,10 @@ def mcmc_routine(sim_directory, level1_output_directory, verbose=True):
     initial_params   = stage2_initial_params,
     prior_kde        = stage2_prior_kde,
     verbose          = verbose,
-    debug_mode       = False
+    debug_mode       = True
   )
-  stage2_mcmc.sample_posterior()
+  stage2_mcmc.sample_posterior(num_walkers=50, num_steps=2000)
+  ww_mcmc.plot_final_fit.PlotFinalFit(stage2_mcmc).plot()
 
 
 ## ###############################################################

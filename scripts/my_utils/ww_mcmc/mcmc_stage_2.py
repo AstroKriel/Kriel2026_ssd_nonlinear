@@ -62,44 +62,58 @@ class MCMCStage2Routine(base_mcmc.BaseMCMCRoutine):
     )
 
   def _model(self, fit_params):
-    (log10_init_energy, log10_sat_energy, gamma, start_nl_time, start_sat_time) = fit_params
-    ## mask different ssd phases
-    mask_exp_phase = self.x_values < start_nl_time
-    mask_nl_phase  = (start_nl_time <= self.x_values) & (self.x_values < start_sat_time)
-    mask_sat_phase = start_sat_time < self.x_values
-    ## compute model constants
-    init_energy     = 10**log10_init_energy
-    sat_energy      = 10**log10_sat_energy
+    fit_params = numpy.atleast_2d(fit_params)
+    log10_init_energy, log10_sat_energy, gamma, start_nl_time, start_sat_time = fit_params.T
+    x_vals = self.x_values
+    n_walkers = fit_params.shape[0]
+    n_times = x_vals.shape[0]
+
+    x_vals_2d = x_vals[None, :]
+    start_nl_time_2d = start_nl_time[:, None]
+    start_sat_time_2d = start_sat_time[:, None]
+    gamma_2d = gamma[:, None]
+
+    mask_exp_phase = x_vals_2d < start_nl_time_2d
+    mask_nl_phase  = (start_nl_time_2d <= x_vals_2d) & (x_vals_2d < start_sat_time_2d)
+    mask_sat_phase = start_sat_time_2d < x_vals_2d
+
+    init_energy = 10**log10_init_energy
+    sat_energy = 10**log10_sat_energy
     start_nl_energy = init_energy * numpy.exp(gamma * start_nl_time)
-    alpha           = (sat_energy - start_nl_energy) / (start_sat_time - start_nl_time)
-    ## model energy evolution
-    energy = numpy.zeros_like(self.x_values)
-    energy[mask_exp_phase] = init_energy * numpy.exp(gamma * self.x_values[mask_exp_phase])
-    energy[mask_nl_phase]  = start_nl_energy + alpha * (self.x_values[mask_nl_phase] - start_nl_time)
-    energy[mask_sat_phase] = sat_energy
+    alpha = (sat_energy - start_nl_energy) / (start_sat_time - start_nl_time)
+
+    start_nl_energy_2d = start_nl_energy[:, None]
+    alpha_2d = alpha[:, None]
+
+    energy = numpy.zeros((n_walkers, n_times))
+
+    energy[mask_exp_phase] = (init_energy[:, None] * numpy.exp(gamma_2d * x_vals_2d))[mask_exp_phase]
+    energy[mask_nl_phase] = (start_nl_energy_2d + alpha_2d * (x_vals_2d - start_nl_time_2d))[mask_nl_phase]
+    energy[mask_sat_phase] = numpy.broadcast_to(sat_energy[:, None], (n_walkers, n_times))[mask_sat_phase]
+
     return energy
 
-  def _check_params_are_valid(self, fit_params, print_errors=False):
-    (log10_init_energy, log10_sat_energy, gamma, start_nl_time, start_sat_time) = fit_params
-    errors = []
-    if not (-30 < log10_init_energy < -5):
-      errors.append(f"`log10_init_energy` ({log10_init_energy:.2f}) must be between -20 and -5.")
-    if not (-5 < log10_sat_energy < 0):
-      errors.append(f"`log10_sat_energy` ({log10_sat_energy:.2f}) must be between -5 and 0.")
-    if not (0 < gamma < 2):
-      errors.append(f"`gamma` ({gamma:.2f}) must be between 0 and 2.")
-    if not (0.1 * self.max_time < start_nl_time < start_sat_time):
-      errors.append(f"`start_nl_time` ({start_nl_time:.2f}) must be larger than 10% of `max_time` ({self.max_time:.2f}) and smaller than `start_sat_time` ({start_sat_time:.2f}).")
-    if not (start_sat_time < self.max_time):
-      errors.append(f"`start_sat_time` ({start_sat_time:.2f}) must be smaller than `max_time` ({self.max_time:.2f}).")
-    if len(errors) > 0:
-      if print_errors: print("\n".join(errors))
-      return False
-    return True
 
-  def _get_kde_eval_params(self, param_vector: tuple[float, ...]) -> numpy.ndarray:
-    ## transition times have unifrom prior
-    return numpy.asarray(param_vector[:3])
+  def _check_params_are_valid(self, fit_params):
+    fit_params = numpy.atleast_2d(fit_params)
+    log10_init_energy   = fit_params[:, 0]
+    log10_sat_energy    = fit_params[:, 1]
+    gamma               = fit_params[:, 2]
+    start_nl_time       = fit_params[:, 3]
+    start_sat_time      = fit_params[:, 4]
+    cond_init_energy    = (-30 < log10_init_energy) & (log10_init_energy < -5)
+    cond_sat_energy     = (-5 < log10_sat_energy) & (log10_sat_energy < 0)
+    cond_gamma          = (0 < gamma) & (gamma < 2)
+    cond_start_nl_time  = (0.1 * self.max_time < start_nl_time) & (start_nl_time < start_sat_time)
+    cond_start_sat_time = start_sat_time < self.max_time
+    valid = cond_init_energy & cond_sat_energy & cond_gamma & cond_start_nl_time & cond_start_sat_time
+    if fit_params.shape[0] == 1:
+      return valid[0]
+    return valid
+
+  def _get_kde_params(self, param_vector):
+    ## ignore transition times: use a unifrom prior for them
+    return numpy.asarray(param_vector[:, :3])
 
   def _annotate_fitted_params(self, axs):
     gamma_samples             = self.fitted_posterior_samples[:,2]
