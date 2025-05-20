@@ -36,9 +36,9 @@ class MCMCStage1Routine(base_mcmc.BaseMCMCRoutine):
       y_values         : list | numpy.ndarray,
       initial_params   : tuple[float, ...],
       likelihood_sigma : float = 1.0,
-      prior_kde        = None,
+      prior_kde        : callable = None,
       verbose          : bool = True,
-      debug_mode       : bool = False
+      plot_kde         : bool = False
     ):
     self.log10_e  = numpy.log10(numpy.exp(1))
     self.max_time = numpy.max(x_values)
@@ -46,13 +46,13 @@ class MCMCStage1Routine(base_mcmc.BaseMCMCRoutine):
       output_directory    = output_directory,
       routine_name        = "stage1",
       verbose             = verbose,
-      debug_mode          = debug_mode,
+      plot_kde            = plot_kde,
       x_values            = x_values,
       y_values            = numpy.log10(y_values),
       likelihood_sigma    = likelihood_sigma,
       initial_params      = initial_params,
       prior_kde           = prior_kde,
-      y_data_label        = r"$\log_{10}(E_{\mathrm{mag}})$",
+      y_label             = r"$\log_{10}(E_{\mathrm{mag}})$",
       fitted_param_labels = [
         r"$\log_{10}(E_{\mathrm{init}})$",
         r"$\gamma$",
@@ -61,36 +61,41 @@ class MCMCStage1Routine(base_mcmc.BaseMCMCRoutine):
     )
 
   def _model(self, param_vectors):
-    param_vectors = numpy.atleast_2d(param_vectors)
+    param_vectors = numpy.atleast_2d(param_vectors) # (N, P)
+    ## output dimensions
+    num_local_walkers = param_vectors.shape[0] # N
+    num_data_points = len(self.x_values) # T
+    ## unpack model parameters (P = 3)
     log10_init_energy, gamma, transition_time = param_vectors.T
-    x_vals        = self.x_values
-    n_walkers     = param_vectors.shape[0]
-    n_times       = x_vals.shape[0]
-    x_vals_2d     = x_vals[None, :]
-    gamma_2d      = gamma[:, None]
-    transition_2d = transition_time[:, None]
-    log10_init_2d = log10_init_energy[:, None]
-    mask_exp      = x_vals_2d < transition_2d
-    mask_sat      = ~mask_exp
-    log10_energy  = numpy.empty((n_walkers, n_times))
-    vals_exp      = log10_init_2d + self.log10_e * gamma_2d * x_vals_2d
-    vals_sat      = log10_init_2d + self.log10_e * gamma_2d * transition_2d
-    vals_sat      = numpy.broadcast_to(vals_sat, (n_walkers, n_times))
-    log10_energy[mask_exp] = vals_exp[mask_exp]
-    log10_energy[mask_sat] = vals_sat[mask_sat]
+    ## reshape parameters to allow for vectorising over param-rows
+    x_values_2d          = self.x_values[None, :] # shape (1, T)
+    gamma_2d             = gamma[:, None] # shape (N, 1)
+    transition_time_2d   = transition_time[:, None] # shape (N, 1)
+    log10_init_energy_2d = log10_init_energy[:, None] # shape (N, 1)
+    ## mask (reduced) SSD phases
+    mask_exp_phase = x_values_2d < transition_time_2d
+    mask_sat_phase = ~mask_exp_phase
+    ## compute (reduced) SSD phases
+    log10_energy_exp_values = log10_init_energy_2d + self.log10_e * gamma_2d * x_values_2d # (N, T)
+    log10_energy_sat_values = log10_init_energy_2d + self.log10_e * gamma_2d * transition_time_2d # (N, 1)
+    log10_energy_sat_values = numpy.broadcast_to(log10_energy_sat_values, (num_local_walkers, num_data_points)) # (N, T)
+    ## assemble modelled (reduced) SSD phases
+    log10_energy = numpy.empty((num_local_walkers, num_data_points))
+    log10_energy[mask_exp_phase] = log10_energy_exp_values[mask_exp_phase]
+    log10_energy[mask_sat_phase] = log10_energy_sat_values[mask_sat_phase]
     return log10_energy
 
-  def _check_params_are_valid(self, param_vectors):
+  def _get_valid_params_mask(self, param_vectors):
     param_vectors = numpy.atleast_2d(param_vectors)
+    num_local_walkers = param_vectors.shape[0]
     log10_init_energy, gamma, transition_time = param_vectors.T
-    valid_mask = (
-      (-30 < log10_init_energy) & (log10_init_energy < -5) &
-      (0 < gamma) & (gamma < 2) &
-      (0.25 * self.max_time < transition_time) & (transition_time < 0.9 * self.max_time)
-    )
-    if param_vectors.shape[0] == 1:
-      return valid_mask[0]
-    return valid_mask
+    valid_log10_init_energy = (-30 < log10_init_energy) & (log10_init_energy < -5)
+    valid_gamma             = (0 < gamma) & (gamma < 2)
+    valid_transition_time   = (0.25 * self.max_time < transition_time) & (transition_time < 0.9 * self.max_time)
+    valid_params_mask       = valid_log10_init_energy & valid_gamma & valid_transition_time
+    if num_local_walkers == 1:
+      return valid_params_mask[0]
+    return valid_params_mask
 
   def _annotate_fitted_params(self, axs):
     log10_gamma_samples     = self.log10_e * self.fitted_posterior_samples[:,1]

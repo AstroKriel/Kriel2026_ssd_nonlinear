@@ -3,10 +3,25 @@
 ## ###############################################################
 
 import numpy
+from typing import NamedTuple
 from jormi.utils import list_utils
 from jormi.ww_io import io_manager
 from jormi.ww_data import compute_stats
 from jormi.ww_plots import plot_manager, add_annotations
+
+
+## ###############################################################
+## HELPER DATA CLASS
+## ###############################################################
+
+class KDEProjectionParams(NamedTuple):
+  posterior_samples    : numpy.ndarray
+  posterior_kde        : callable
+  param_ranges         : list[tuple]
+  col_index            : int
+  row_index            : int
+  grid_resolution      : int = 20
+  num_marginal_samples : int = 50
 
 
 ## ###############################################################
@@ -16,29 +31,36 @@ from jormi.ww_plots import plot_manager, add_annotations
 class PlotModelPosteriors:
 
   def __init__(self, mcmc_routine):
-    self.mcmc_routine     = mcmc_routine
-    self.output_directory = self.mcmc_routine.output_directory
-    self.routine_name     = self.mcmc_routine.routine_name
-    self.num_params       = self.mcmc_routine.num_params
-    self.verbose          = self.mcmc_routine.verbose
-    self.debug_mode       = self.mcmc_routine.debug_mode
+    self.output_directory = mcmc_routine.output_directory
+    self.routine_name     = mcmc_routine.routine_name
+    self.num_params       = mcmc_routine.num_params
+    self.verbose          = mcmc_routine.verbose
+    self.plot_kde         = mcmc_routine.plot_kde
+    ## fitted params
+    self.fitted_posterior_samples = mcmc_routine.fitted_posterior_samples
+    self.fitted_posterior_kde     = mcmc_routine.fitted_posterior_kde
+    self.fitted_param_labels      = mcmc_routine.fitted_param_labels
+    ## output params
+    self.output_posterior_samples = mcmc_routine.output_posterior_samples
+    self.output_posterior_kde     = mcmc_routine.output_posterior_kde
+    self.output_param_labels      = mcmc_routine.output_param_labels
 
   def plot(self):
     self._plot_posteriors(
-      posterior_samples = self.mcmc_routine.fitted_posterior_samples,
-      posterior_kde     = self.mcmc_routine.fitted_posterior_kde,
-      param_labels      = self.mcmc_routine.fitted_param_labels,
+      posterior_samples = self.fitted_posterior_samples,
+      posterior_kde     = self.fitted_posterior_kde,
+      param_labels      = self.fitted_param_labels,
       fig_name          = f"{self.routine_name}_fitted_posteriors.png",
     )
     output_is_different_from_fitted = not numpy.array_equal(
-      self.mcmc_routine.fitted_posterior_samples,
-      self.mcmc_routine.output_posterior_samples
+      self.fitted_posterior_samples,
+      self.output_posterior_samples
     )
     if output_is_different_from_fitted:
       self._plot_posteriors(
-        posterior_samples = self.mcmc_routine.output_posterior_samples,
-        posterior_kde     = self.mcmc_routine.output_posterior_kde,
-        param_labels      = self.mcmc_routine.output_param_labels,
+        posterior_samples = self.output_posterior_samples,
+        posterior_kde     = self.output_posterior_kde,
+        param_labels      = self.output_param_labels,
         fig_name          = f"{self.routine_name}_output_posteriors.png",
       )
 
@@ -60,8 +82,7 @@ class PlotModelPosteriors:
           self._plot_jpdf(ax, row_index, col_index, posterior_samples)
         else: ax.axis("off")
     self._annotate_plot(axs, param_ranges, param_labels)
-    if self.debug_mode:
-      self._plot_kde_projections(axs, posterior_samples, posterior_kde, param_ranges)
+    if self.plot_kde: self._plot_kde_projections(axs, posterior_samples, posterior_kde, param_ranges)
     file_path = io_manager.combine_file_path_parts([ self.output_directory, fig_name ])
     plot_manager.save_figure(fig, file_path, verbose=self.verbose)
 
@@ -148,49 +169,51 @@ class PlotModelPosteriors:
       for col_index in range(self.num_params):
         if col_index >= row_index: continue
         print(f"Estimating KDE projection for axs[{row_index}][{col_index}]")
-        col_grid, row_grid, kde_density = self._compute_2d_kde_projection(
-          posterior_samples    = posterior_samples,
-          posterior_kde        = posterior_kde,
-          param_ranges         = param_ranges,
-          col_index            = col_index,
-          row_index            = row_index,
-          grid_resolution      = 20,
-          num_marginal_samples = 50,
+        params = KDEProjectionParams(
+          posterior_samples = posterior_samples,
+          posterior_kde     = posterior_kde,
+          param_ranges      = param_ranges,
+          col_index         = col_index,
+          row_index         = row_index,
         )
+        col_grid, row_grid, kde_density = self._compute_2d_kde_projection(params)
         axs[row_index, col_index].contour(col_grid, row_grid, kde_density, levels=5, colors="red", linewidths=1.5, alpha=0.75)
 
-  def _compute_2d_kde_projection(self, posterior_samples, posterior_kde, param_ranges, col_index, row_index, grid_resolution, num_marginal_samples):
+  def _compute_2d_kde_projection(self, params: KDEProjectionParams):
     marginalized_param_indices = [
       param_index
       for param_index in range(self.num_params)
-      if (param_index != col_index) and (param_index != row_index)
+      if (param_index != params.col_index) and (param_index != params.row_index)
     ]
     col_values = numpy.linspace(
-      param_ranges[col_index][0],
-      param_ranges[col_index][1],
-      grid_resolution
+      params.param_ranges[params.col_index][0],
+      params.param_ranges[params.col_index][1],
+      params.grid_resolution
     )
     row_values = numpy.linspace(
-      param_ranges[row_index][0],
-      param_ranges[row_index][1],
-      grid_resolution
+      params.param_ranges[params.row_index][0],
+      params.param_ranges[params.row_index][1],
+      params.grid_resolution
     )
     col_grid, row_grid = numpy.meshgrid(col_values, row_values)
     col_flat = col_grid.ravel()
     row_flat = row_grid.ravel()
     num_grid_points = col_flat.shape[0]
     marginal_sample_indices = numpy.random.choice(
-      posterior_samples.shape[0],
-      size    = num_marginal_samples,
+      params.posterior_samples.shape[0],
+      size    = params.num_marginal_samples,
       replace = False
     )
-    marginalized_samples = posterior_samples[marginal_sample_indices][:, marginalized_param_indices]
-    grid_points = numpy.zeros((num_grid_points * num_marginal_samples, self.num_params))
-    grid_points[:, col_index] = numpy.repeat(col_flat, num_marginal_samples)
-    grid_points[:, row_index] = numpy.repeat(row_flat, num_marginal_samples)
+    marginalized_samples = params.posterior_samples[marginal_sample_indices][:, marginalized_param_indices]
+    grid_points = numpy.zeros((
+      num_grid_points * params.num_marginal_samples,
+      self.num_params
+    ))
+    grid_points[:, params.col_index] = numpy.repeat(col_flat, params.num_marginal_samples)
+    grid_points[:, params.row_index] = numpy.repeat(row_flat, params.num_marginal_samples)
     grid_points[:, marginalized_param_indices] = numpy.tile(marginalized_samples, (num_grid_points, 1))
-    kde_values = posterior_kde(grid_points.T)
-    kde_density = kde_values.reshape(num_grid_points, num_marginal_samples).mean(axis=1).reshape(grid_resolution, grid_resolution)
+    kde_values = params.posterior_kde(grid_points.T)
+    kde_density = kde_values.reshape(num_grid_points, params.num_marginal_samples).mean(axis=1).reshape(params.grid_resolution, params.grid_resolution)
     return col_grid, row_grid, kde_density
 
 

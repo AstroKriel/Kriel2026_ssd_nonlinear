@@ -24,14 +24,14 @@ def mcmc_routine(sim_directory, level1_output_directory, verbose=True):
   sim_name = ww_sims.get_sim_name(sim_directory)
   level2_output_directory = io_manager.combine_file_path_parts([ level1_output_directory, sim_name ])
   io_manager.init_directory(level2_output_directory, verbose=False)
-  data_dict = ww_sims.load_data(sim_directory, num_samples=70)
+  data_dict = ww_sims.load_data(sim_directory, num_samples=500)
   x_values  = data_dict["time"]
   y_values  = data_dict["magnetic_energy"]
   ## stage 1 MCMC fitter
   stage1_initial_params = (
-    -20,
-    0.5,
-    0.5 * numpy.max(x_values)
+    -20, # log10(E_init)
+    0.5, # log10(E_sat)
+    0.5 * numpy.max(x_values) # gammma
   )
   stage1_mcmc = ww_mcmc.MCMCStage1Routine(
     output_directory = level2_output_directory,
@@ -39,19 +39,19 @@ def mcmc_routine(sim_directory, level1_output_directory, verbose=True):
     y_values         = y_values,
     initial_params   = stage1_initial_params,
     verbose          = verbose,
-    debug_mode       = True
+    plot_kde         = True
   )
-  stage1_mcmc.sample_posterior()
+  stage1_mcmc.estimate_posterior()
   ## stage 2 MCMC fitter
   stage2_prior_kde = stage1_mcmc.output_posterior_kde
   stage1_median_output_params = compute_median_params_from_kde(stage2_prior_kde)
   stage1_median_transition_time = numpy.median(stage1_mcmc.fitted_posterior_samples[:,2])
   stage2_initial_params = (
-    stage1_median_output_params[0],
-    stage1_median_output_params[1],
-    stage1_median_output_params[2],
-    0.5 * stage1_median_transition_time,
-    0.5 * (numpy.max(x_values) + stage1_median_transition_time)
+    stage1_median_output_params[0], # log10(E_init)
+    stage1_median_output_params[1], # log10(E_sat)
+    stage1_median_output_params[2], # gammma
+    0.5 * stage1_median_transition_time, # t_nl
+    0.5 * (numpy.max(x_values) + stage1_median_transition_time) # t_sat
   )
   approx_transition_index = list_utils.get_index_of_closest_value(x_values, stage1_median_transition_time)
   stage2_likelihood_sigma = numpy.std(y_values[approx_transition_index:])
@@ -63,9 +63,9 @@ def mcmc_routine(sim_directory, level1_output_directory, verbose=True):
     initial_params   = stage2_initial_params,
     prior_kde        = stage2_prior_kde,
     verbose          = verbose,
-    debug_mode       = True
+    plot_kde         = True
   )
-  stage2_mcmc.sample_posterior()
+  stage2_mcmc.estimate_posterior(num_walkers=50, num_steps=3000)
   ww_mcmc.plot_final_fits.PlotFinalFits(stage2_mcmc).plot()
 
 

@@ -36,22 +36,22 @@ class MCMCStage2Routine(base_mcmc.BaseMCMCRoutine):
       y_values         : list | numpy.ndarray,
       initial_params   : tuple[float, ...],
       likelihood_sigma : float = 1.0,
-      prior_kde        = None,
+      prior_kde        : callable = None,
       verbose          : bool = True,
-      debug_mode       : bool = False
+      plot_kde         : bool = False
     ):
     self.max_time = numpy.max(x_values)
     super().__init__(
       output_directory    = output_directory,
       routine_name        = "stage2",
       verbose             = verbose,
-      debug_mode          = debug_mode,
+      plot_kde            = plot_kde,
       x_values            = x_values,
       y_values            = y_values,
       prior_kde           = prior_kde,
       likelihood_sigma    = likelihood_sigma,
       initial_params      = initial_params,
-      y_data_label        = r"$E_{\mathrm{mag}}$",
+      y_label             = r"$E_{\mathrm{mag}}$",
       fitted_param_labels = [
         r"$\log_{10}(E_{\mathrm{init}})$",
         r"$\log_{10}(E_{\mathrm{sat}})$",
@@ -61,61 +61,66 @@ class MCMCStage2Routine(base_mcmc.BaseMCMCRoutine):
       ]
     )
 
-  def _model(self, fit_params):
-    fit_params = numpy.atleast_2d(fit_params)
-    log10_init_energy, log10_sat_energy, gamma, start_nl_time, start_sat_time = fit_params.T
-    x_vals             = self.x_values
-    n_walkers          = fit_params.shape[0]
-    n_times            = x_vals.shape[0]
-    x_vals_2d          = x_vals[None, :]
-    start_nl_time_2d   = start_nl_time[:, None]
-    start_sat_time_2d  = start_sat_time[:, None]
-    gamma_2d           = gamma[:, None]
-    mask_exp_phase     = x_vals_2d < start_nl_time_2d
-    mask_nl_phase      = (start_nl_time_2d <= x_vals_2d) & (x_vals_2d < start_sat_time_2d)
-    mask_sat_phase     = start_sat_time_2d < x_vals_2d
-    init_energy        = 10**log10_init_energy
-    sat_energy         = 10**log10_sat_energy
-    start_nl_energy    = init_energy * numpy.exp(gamma * start_nl_time)
-    alpha              = (sat_energy - start_nl_energy) / (start_sat_time - start_nl_time)
-    start_nl_energy_2d = start_nl_energy[:, None]
-    alpha_2d           = alpha[:, None]
-    energy             = numpy.zeros((n_walkers, n_times))
-    energy[mask_exp_phase] = (init_energy[:, None] * numpy.exp(gamma_2d * x_vals_2d))[mask_exp_phase]
-    energy[mask_nl_phase]  = (start_nl_energy_2d + alpha_2d * (x_vals_2d - start_nl_time_2d))[mask_nl_phase]
-    energy[mask_sat_phase] = numpy.broadcast_to(sat_energy[:, None], (n_walkers, n_times))[mask_sat_phase]
+  def _model(self, param_vectors):
+    param_vectors = numpy.atleast_2d(param_vectors) # (N, P)
+    ## output dimensions
+    num_local_walkers = param_vectors.shape[0] # N
+    num_data_points = len(self.x_values) # T
+    ## unpack model parameters (P = 5)
+    log10_init_energy, log10_sat_energy, gamma, start_nl_time, start_sat_time = param_vectors.T
+    ## reshape parameters to allow for vectorising over param-rows
+    x_values_2d        = self.x_values[None, :] # shape (1, T)
+    start_nl_time_2d   = start_nl_time[:, None] # shape (N, 1)
+    start_sat_time_2d  = start_sat_time[:, None] # shape (N, 1)
+    gamma_2d           = gamma[:, None] # shape (N, 1)
+    ## mask SSD phases
+    mask_exp_phase     = x_values_2d < start_nl_time_2d
+    mask_nl_phase      = (start_nl_time_2d <= x_values_2d) & (x_values_2d < start_sat_time_2d)
+    mask_sat_phase     = start_sat_time_2d < x_values_2d
+    ## compute model constants (per walker)
+    init_energy        = 10**log10_init_energy # (N,)
+    sat_energy         = 10**log10_sat_energy # (N,)
+    start_nl_energy    = init_energy * numpy.exp(gamma * start_nl_time) # (N,)
+    alpha              = (sat_energy - start_nl_energy) / (start_sat_time - start_nl_time) # (N,)
+    init_energy_2d     = init_energy[:, None] # (N, 1)
+    sat_energy_2d      = sat_energy[:, None] # (N, 1)
+    start_nl_energy_2d = start_nl_energy[:, None] # (N, 1)
+    alpha_2d           = alpha[:, None] # (N, 1)
+    ## assemble modelled SSD phases
+    energy = numpy.zeros((num_local_walkers, num_data_points))
+    energy[mask_exp_phase] = (init_energy_2d * numpy.exp(gamma_2d * x_values_2d))[mask_exp_phase] # (N, T)
+    energy[mask_nl_phase]  = (start_nl_energy_2d + alpha_2d * (x_values_2d - start_nl_time_2d))[mask_nl_phase] # (N, T)
+    energy[mask_sat_phase] = numpy.broadcast_to(sat_energy_2d, (num_local_walkers, num_data_points))[mask_sat_phase] # (N, T)
     return energy
 
-
-  def _check_params_are_valid(self, fit_params):
-    fit_params = numpy.atleast_2d(fit_params)
-    log10_init_energy   = fit_params[:, 0]
-    log10_sat_energy    = fit_params[:, 1]
-    gamma               = fit_params[:, 2]
-    start_nl_time       = fit_params[:, 3]
-    start_sat_time      = fit_params[:, 4]
-    cond_init_energy    = (-30 < log10_init_energy) & (log10_init_energy < -5)
-    cond_sat_energy     = (-5 < log10_sat_energy) & (log10_sat_energy < 0)
-    cond_gamma          = (0 < gamma) & (gamma < 2)
-    cond_start_nl_time  = (0.1 * self.max_time < start_nl_time) & (start_nl_time < start_sat_time)
-    cond_start_sat_time = start_sat_time < self.max_time
-    valid = cond_init_energy & cond_sat_energy & cond_gamma & cond_start_nl_time & cond_start_sat_time
-    if fit_params.shape[0] == 1:
-      return valid[0]
-    return valid
+  def _get_valid_params_mask(self, param_vectors):
+    param_vectors = numpy.atleast_2d(param_vectors)
+    num_local_walkers = param_vectors.shape[0]
+    log10_init_energy, log10_sat_energy, gamma, start_nl_time, start_sat_time = param_vectors.T
+    valid_log10_init_energy = (-30 < log10_init_energy) & (log10_init_energy < -5)
+    valid_log10_sat_energy  = (-5 < log10_sat_energy) & (log10_sat_energy < 0)
+    valid_gamma             = (0 < gamma) & (gamma < 2)
+    valid_start_nl_time     = (0.1 * self.max_time < start_nl_time) & (start_nl_time < start_sat_time)
+    valid_start_sat_time    = start_sat_time < self.max_time
+    valid_params_mask = (
+      valid_log10_init_energy & valid_log10_sat_energy & valid_gamma & valid_start_nl_time & valid_start_sat_time
+    )
+    if num_local_walkers == 1:
+      return valid_params_mask[0]
+    return valid_params_mask
 
   def _get_kde_params(self, param_vectors):
-    ## ignore transition times: use a unifrom prior for them
+    ## ignore the transition times; use a unifrom prior for them
     return numpy.asarray(param_vectors[:, :3])
 
   def _annotate_fitted_params(self, axs):
-    gamma_samples             = self.fitted_posterior_samples[:,2]
-    start_nl_time_samples     = self.fitted_posterior_samples[:,3]
-    start_sat_time_samples    = self.fitted_posterior_samples[:,4]
-    init_energy_samples       = 10**self.fitted_posterior_samples[:,0]
-    sat_energy_samples        = 10**self.fitted_posterior_samples[:,1]
-    start_nl_energy_samples   = init_energy_samples * numpy.exp(gamma_samples * start_nl_time_samples)
-    alpha_samples             = (sat_energy_samples - start_nl_energy_samples) / (start_sat_time_samples - start_nl_time_samples)
+    init_energy_samples     = 10**self.fitted_posterior_samples[:,0]
+    sat_energy_samples      = 10**self.fitted_posterior_samples[:,1]
+    gamma_samples           = self.fitted_posterior_samples[:,2]
+    start_nl_time_samples   = self.fitted_posterior_samples[:,3]
+    start_sat_time_samples  = self.fitted_posterior_samples[:,4]
+    start_nl_energy_samples = init_energy_samples * numpy.exp(gamma_samples * start_nl_time_samples)
+    alpha_samples           = (sat_energy_samples - start_nl_energy_samples) / (start_sat_time_samples - start_nl_time_samples)
     plot_param_percentiles(axs[0], sat_energy_samples, orientation="horizontal")
     plot_param_percentiles(axs[1], alpha_samples, orientation="horizontal")
     for row_index in range(len(axs)):
