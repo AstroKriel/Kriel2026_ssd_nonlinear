@@ -1,6 +1,7 @@
 ## ###############################################################
 ## DEPENDENCIES
 ## ###############################################################
+
 import numpy
 from jormi.utils import list_utils
 from jormi.ww_io import io_manager
@@ -38,7 +39,7 @@ def mcmc_routine(sim_directory, level1_output_directory, verbose=True):
     y_values         = y_values,
     initial_params   = stage1_initial_params,
     verbose          = verbose,
-    debug_mode       = False
+    debug_mode       = True
   )
   stage1_mcmc.sample_posterior()
   ## stage 2 MCMC fitter
@@ -64,8 +65,8 @@ def mcmc_routine(sim_directory, level1_output_directory, verbose=True):
     verbose          = verbose,
     debug_mode       = True
   )
-  stage2_mcmc.sample_posterior(num_walkers=50, num_steps=2000)
-  ww_mcmc.plot_final_fit.PlotFinalFit(stage2_mcmc).plot()
+  stage2_mcmc.sample_posterior()
+  ww_mcmc.plot_final_fits.PlotFinalFits(stage2_mcmc).plot()
 
 
 ## ###############################################################

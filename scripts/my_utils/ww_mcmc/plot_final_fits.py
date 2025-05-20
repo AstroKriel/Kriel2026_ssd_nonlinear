@@ -14,7 +14,7 @@ from jormi.ww_io import io_manager
 ## PLOTTING ROUTINE
 ## ###############################################################
 
-class PlotFinalFit:
+class PlotFinalFits:
 
   def __init__(self, mcmc_routine, num_curves: int = 100):
     self.mcmc_routine = mcmc_routine
@@ -50,6 +50,11 @@ class PlotFinalFit:
     axs[0].fill_between(self.mcmc_routine.x_values, numpy.log10(p16), numpy.log10(p84), color="red", alpha=0.25, zorder=3)
     axs[1].plot(self.mcmc_routine.x_values, p50, color="red", lw=2, zorder=4)
     axs[1].fill_between(self.mcmc_routine.x_values, p16, p84, color="red", alpha=0.25, zorder=3)
+
+  def _label_plot(self, axs):
+    axs[0].set_ylabel(r"$\log_{10}(E_{\mathrm{mag}})$")
+    axs[1].set_ylabel(r"$E_{\mathrm{mag}}$")
+    axs[1].set_xlabel(r"time")
 
 
 ## END OF MODULE
