@@ -39,6 +39,7 @@ def plot_powerlaw_passing_through(ax, domain_bounds, coordinate, slope, num_samp
 
 def main():
   directory  = "fits"
+  io_manager.
   file_names = io_manager.filter_files(
     directory      = directory,
     include_string = "_params",
