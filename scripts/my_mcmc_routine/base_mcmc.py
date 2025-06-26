@@ -58,9 +58,9 @@ class BaseMCMCRoutine:
       output_directory    : str | Path,
       x_values            : list | numpy.ndarray,
       y_values            : list | numpy.ndarray,
+      likelihood_sigma    : list | numpy.ndarray,
       initial_params      : tuple[float, ...],
       prior_kde           : callable = None,
-      likelihood_sigma    : float = 1.0,
       plot_posterior_kde  : bool = False,
       data_label          : str | None = None,
       fitted_param_labels : list[str] = [],
@@ -69,10 +69,10 @@ class BaseMCMCRoutine:
     self.output_directory    = output_directory
     self.x_values            = numpy.asarray(x_values)
     self.y_values            = numpy.asarray(y_values)
+    self.likelihood_sigma    = likelihood_sigma
     self.initial_params      = initial_params
     self.num_params          = len(self.initial_params)
     self._prior_logpdf       = prior_kde.logpdf if prior_kde is not None else None
-    self.likelihood_sigma    = likelihood_sigma
     self.data_label          = data_label
     self.fitted_param_labels = fitted_param_labels
     self.plot_posterior_kde  = plot_posterior_kde
@@ -88,15 +88,16 @@ class BaseMCMCRoutine:
   def _validate_inputs(self):
     if not isinstance(self.x_values, (list, numpy.ndarray)): raise ValueError(f"`x_values` should either be a list or array of values.")
     if not isinstance(self.y_values, (list, numpy.ndarray)): raise ValueError(f"`y_values` should either be a list or array of values.")
+    if not isinstance(self.likelihood_sigma, (list, numpy.ndarray)): raise ValueError(f"`likelihood_sigma` should either be a list or array of values.")
     if len(self.x_values) != len(self.y_values): raise ValueError(f"`x_values` and `y_values` should be the same length. Received {len(self.x_values)} vs {len(self.y_values)}.")
+    if len(self.x_values) != len(self.likelihood_sigma): raise ValueError(f"`x_values` and `likelihood_sigma` should be the same length. Received {len(self.x_values)} vs {len(self.likelihood_sigma)}.")
     if not isinstance(self.initial_params, tuple): raise ValueError(f"`initial_params` should be a tuple. Received {type(self.initial_params)}.")
-    if not isinstance(self.likelihood_sigma, float): raise ValueError(f"`likelihood_sigma` should be a scalar.")
 
   def estimate_posterior(
       self,
-      num_walkers   : int = 200,
-      num_steps     : int = 1e4,
-      burn_in_steps : int = 1e3,
+      num_walkers   : int = 100, # 200
+      num_steps     : int = 1e3, # 2e4
+      burn_in_steps : int = 1e2, # 1e3
     ):
     if not self._get_valid_params_mask(self.initial_params):
       raise ValueError("Initial guess is invalid!")
@@ -112,15 +113,15 @@ class BaseMCMCRoutine:
     )
     deque(
       tqdm(
-        mcmc_sampler.sample(initial_state=perturbed_params, iterations=num_steps),
-        total = num_steps
+        mcmc_sampler.sample(initial_state=perturbed_params, iterations=int(num_steps)),
+        total = int(num_steps)
       ),
       maxlen = 0 # discard returned samples; deque is only used to force evaluation of the generator
     )
     ## save key outputs
     self.raw_chain = mcmc_sampler.get_chain()
     self._check_chain_convergence(mcmc_sampler)
-    self.fitted_posterior_samples = mcmc_sampler.get_chain(discard=burn_in_steps, thin=10, flat=True)
+    self.fitted_posterior_samples = mcmc_sampler.get_chain(discard=int(burn_in_steps), thin=10, flat=True)
     self.output_posterior_samples, self.output_param_labels = self._get_output_params()
     if numpy.array_equal(self.output_posterior_samples, self.fitted_posterior_samples):
       print("Estimating the KDE of only the fitted posterior...")
@@ -162,11 +163,15 @@ class BaseMCMCRoutine:
       return ll_values
     try:
       valid_params = param_vectors[valid_params_mask]
-      modelled_y   = self._model(valid_params)
-      measured_y   = numpy.asarray(self.y_values)
+      modelled_y = numpy.atleast_2d(self._model(valid_params))
+      measured_y = numpy.asarray(self.y_values)
+      assert modelled_y.shape == (valid_params.shape[0], measured_y.shape[0]), (
+        f"Expected model output shape ({valid_params.shape[0]}, {measured_y.shape[0]}), got {modelled_y.shape}"
+      )
       ## add a leading dimension to the measured data so it broadcasts across the vectorised param-rows
-      y_residuals  = measured_y[None, :] - modelled_y
-      ll_values[valid_params_mask] = -0.5 * numpy.sum(numpy.square(y_residuals / self.likelihood_sigma), axis=1)
+      y_residuals_2d      = measured_y[None, :] - modelled_y
+      likelihood_sigma_2d = self.likelihood_sigma[None, :]
+      ll_values[valid_params_mask] = -0.5 * numpy.sum(numpy.square(y_residuals_2d / likelihood_sigma_2d), axis=1)
     except Exception as error:
       raise
     return ll_values
@@ -174,10 +179,10 @@ class BaseMCMCRoutine:
   def _check_chain_convergence(self, mcmc_sampler):
     try:
       self.auto_correlation_time = mcmc_sampler.get_autocorr_time()
-      converged = numpy.all(self.auto_correlation_time * 50 < self.num_steps)
+      is_converged = numpy.all(self.auto_correlation_time * 50 < self.num_steps)
       if numpy.any(self.auto_correlation_time * 5 > self.num_steps):
         print("WARNING: Chain length may be too short to reliably estimate the autocorrelation time.")
-      if not converged:
+      if not is_converged:
         print("WARNING: Chain appears to not have converged.")
       else: print(f"Chains appear to have converged. The autocorrelation time for the parameters are: {self.auto_correlation_time}")
     except emcee.autocorr.AutocorrError:

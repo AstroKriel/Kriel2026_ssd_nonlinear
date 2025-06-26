@@ -4,49 +4,33 @@
 
 import numpy
 from . import base_mcmc
-
-
-## ###############################################################
-## HELPER FUNCTION
-## ###############################################################
-
-def plot_param_percentiles(ax, samples, orientation):
-  p16, p50, p84 = numpy.percentile(samples, [16, 50, 84])
-  if   "h" in orientation.lower():
-    ax_line = ax.axhline
-    ax_span = ax.axhspan
-  elif "v" in orientation.lower():
-    ax_line = ax.axvline
-    ax_span = ax.axvspan
-  else: raise ValueError("`orientation` must either be `horizontal` (`h`) or `vertical` (`v`).")
-  ax_line(p50, color="green", ls=":", lw=1.5, zorder=5)
-  ax_span(p16, p84, color="green", ls="-", lw=1.5, alpha=0.3, zorder=4)
+from . import mcmc_utils
 
 
 ## ###############################################################
 ## STAGE 1 MCMC FITTER
 ## ###############################################################
 
-class MCMCStage1Routine(base_mcmc.BaseMCMCRoutine):
+class Stage1MCMCRoutine(base_mcmc.BaseMCMCRoutine):
   def __init__(
       self,
       *,
-      output_directory   : str,
-      x_values           : list | numpy.ndarray,
-      y_values           : list | numpy.ndarray,
-      initial_params     : tuple[float, ...],
-      likelihood_sigma   : float = 1.0,
-      plot_posterior_kde : bool = False
+      output_directory        : str,
+      time_values             : list | numpy.ndarray,
+      ave_log10_energy_values : list | numpy.ndarray,
+      std_log10_energy_values : list | numpy.ndarray,
+      initial_params          : tuple[float, ...],
+      plot_posterior_kde      : bool = True
     ):
     self.log10_e  = numpy.log10(numpy.exp(1))
-    self.max_time = numpy.max(x_values)
+    self.max_time = numpy.max(time_values)
     super().__init__(
       routine_name        = "stage1",
       output_directory    = output_directory,
-      x_values            = x_values,
-      y_values            = numpy.log10(y_values),
+      x_values            = time_values,
+      y_values            = ave_log10_energy_values,
+      likelihood_sigma    = std_log10_energy_values,
       initial_params      = initial_params,
-      likelihood_sigma    = likelihood_sigma,
       plot_posterior_kde  = plot_posterior_kde,
       data_label          = r"$\log_{10}(E_{\mathrm{mag}})$",
       fitted_param_labels = [
@@ -96,9 +80,9 @@ class MCMCStage1Routine(base_mcmc.BaseMCMCRoutine):
   def _annotate_fitted_params(self, axs):
     log10_gamma_samples     = self.log10_e * self.fitted_posterior_samples[:,1]
     transition_time_samples = self.fitted_posterior_samples[:,2]
-    plot_param_percentiles(axs[1], log10_gamma_samples, orientation="horizontal")
+    mcmc_utils.plot_param_percentiles(axs[1], log10_gamma_samples, orientation="horizontal")
     for row_index in range(len(axs)):
-      plot_param_percentiles(axs[row_index], transition_time_samples, orientation="vertical")
+      mcmc_utils.plot_param_percentiles(axs[row_index], transition_time_samples, orientation="vertical")
 
   def _get_output_params(self):
     log10_init_energy_samples = self.fitted_posterior_samples[:,0]
@@ -119,7 +103,7 @@ class MCMCStage1Routine(base_mcmc.BaseMCMCRoutine):
 
   def _annotate_output_params(self, axs):
     log10_sat_energy_samples = self.output_posterior_samples[:,1]
-    plot_param_percentiles(axs[0], log10_sat_energy_samples, orientation="horizontal")
+    mcmc_utils.plot_param_percentiles(axs[0], log10_sat_energy_samples, orientation="horizontal")
 
 
 ## END OF MODULE

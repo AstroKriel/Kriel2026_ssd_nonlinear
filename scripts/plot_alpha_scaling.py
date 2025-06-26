@@ -83,10 +83,19 @@ def main():
   x_values = numpy.logspace(-3, 2, 100)
   # coefficient = fit_data.get_powerlaw_coefficient(exponent=3, x_ref=1e-1, y_ref=1e-5)
   log10_coefficient = fit_data.get_linear_intercept(slope=3, x_ref=-1, y_ref=-5)
+  print(10**log10_coefficient)
   plot_data.plot_wo_scaling_axis(
     ax       = ax,
     x_values = x_values,
     y_values = 10**log10_coefficient * x_values**3,
+    ls       = "--",
+    lw       = 1.5
+  )
+  plot_data.plot_wo_scaling_axis(
+    ax       = ax,
+    x_values = x_values,
+    y_values = 0.08 * x_values**3,
+    color    = "red",
     ls       = "--",
     lw       = 1.5
   )

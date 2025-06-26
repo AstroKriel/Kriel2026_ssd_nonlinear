@@ -16,6 +16,30 @@ from ww_flash_sims.sim_io import read_vi_data
 ## HELPER FUNCTIONS
 ## ###############################################################
 
+def measure_binned_stats(x_values, y_values)
+  x_bin_edges = numpy.linspace(0, numpy.max(x_values), num_bins+1)
+  x_bin_centers = 0.5 * (x_bin_edges[1:] + x_bin_edges[:-1])
+  x_bin_indices = numpy.digitize(x_values, x_bin_edges) - 1
+  y_ave_s = numpy.zeros(num_bins)
+  y_std_s = numpy.zeros(num_bins)
+  log10_y_ave_s = numpy.zeros(num_bins)
+  log10_y_std_s = numpy.zeros(num_bins)
+  for bin_index in range(num_bins):
+    bin_mask = (x_bin_indices == bin_index)
+    if numpy.any(bin_mask):
+      y_values_in_bin = numpy.array(y_values)[bin_mask]
+      log10_y_values_in_bin = numpy.log10(y_values_in_bin)
+      y_ave_s[bin_index] = numpy.mean(y_values_in_bin)
+      y_std_s[bin_index] = numpy.std(y_values_in_bin)
+      log10_y_ave_s[bin_index] = numpy.mean(log10_y_values_in_bin)
+      log10_y_std_s[bin_index] = numpy.std(log10_y_values_in_bin)
+    else:
+      y_ave_s[bin_index] = numpy.nan
+      y_std_s[bin_index] = numpy.nan
+      log10_y_ave_s[bin_index] = numpy.nan
+      log10_y_std_s[bin_index] = numpy.nan
+  return 
+
 def extract_sim_params(sim_directory: str | Path):
   sim_directory = str(sim_directory)
   match_plasma_pattern = re.search(r"Re(\d+)/Mach([\d.]+)/Pm(\d+)", sim_directory)
@@ -29,7 +53,7 @@ def extract_sim_params(sim_directory: str | Path):
   version_number = int(match_sim_pattern.group(2)) if match_sim_pattern.group(2) else 1
   return Mach_number, Re_number, Pm_number, Nres_number, version_number
 
-def load_data(sim_directory: str | Path, num_samples: int = 100):
+def load_data(sim_directory: str | Path):
   Mach_number, Re_number, Pm_number, Nres_number, version_number = extract_sim_params(sim_directory)
   sim_name = f"Mach{Mach_number}Re{Re_number}Pm{Pm_number}Nres{Nres_number}v{version_number}"
   raw_time, raw_magnetic_energy = read_vi_data.read_vi_data(
@@ -38,17 +62,20 @@ def load_data(sim_directory: str | Path, num_samples: int = 100):
   )
   subset_raw_time = raw_time[1:]
   subset_raw_magnetic_energy = raw_magnetic_energy[1:]
-  interp_time, interp_magnetic_energy = interpolate_data.interpolate_1d(
-    x_values = subset_raw_time,
-    y_values = subset_raw_magnetic_energy,
-    x_interp = numpy.linspace(subset_raw_time[0], subset_raw_time[-1], num_samples), # TODO: sample size should be based on t_turb
-    kind     = "linear"
-  )
+  t_turb = 0.5 / Mach_number # ell_turb / u_turb
+  num_t_turb = numpy.floor(numpy.max(subset_raw_time / t_turb))
+  binned_time = numpy.
+  # interp_time, interp_magnetic_energy = interpolate_data.interpolate_1d(
+  #   x_values = subset_raw_time,
+  #   y_values = subset_raw_magnetic_energy,
+  #   x_interp = numpy.linspace(subset_raw_time[0], subset_raw_time[-1], num_samples), # TODO: sample size should be based on t_turb
+  #   kind     = "linear"
+  # )
   return {
     "sim_name" : sim_name,
     "sim_directory" : str(sim_directory),
     "plasma_params" : {
-      "t_turb" : 0.5 / Mach_number,
+      "t_turb" : t_turb,
       "Mach" : Mach_number,
       "Re" : Re_number,
       "Pm" : Pm_number,

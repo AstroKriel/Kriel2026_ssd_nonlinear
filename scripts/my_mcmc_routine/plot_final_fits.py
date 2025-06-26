@@ -50,10 +50,8 @@ class PlotFinalFits:
       self.model_func(self.fitted_posterior_samples[sample_index]).squeeze()
       for sample_index in random_indices
     ])
-    p16, p50, p84 = numpy.percentile(modelled_curves, [16, 50, 84], axis=0)
-    axs[0].plot(self.x_values, numpy.log10(p50), color="red", lw=2, zorder=4)
+    p16, p84 = numpy.percentile(modelled_curves, [16, 84], axis=0)
     axs[0].fill_between(self.x_values, numpy.log10(p16), numpy.log10(p84), color="red", alpha=0.25, zorder=3)
-    axs[1].plot(self.x_values, p50, color="red", lw=2, zorder=4)
     axs[1].fill_between(self.x_values, p16, p84, color="red", alpha=0.25, zorder=3)
 
   def _label_plot(self, axs):
