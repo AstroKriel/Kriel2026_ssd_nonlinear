@@ -95,9 +95,9 @@ class BaseMCMCRoutine:
 
   def estimate_posterior(
       self,
-      num_walkers   : int = 100, # 200
-      num_steps     : int = 1e3, # 2e4
-      burn_in_steps : int = 1e2, # 1e3
+      num_walkers   : int = 200,
+      num_steps     : int = 2e4,
+      burn_in_steps : int = 1e3,
     ):
     if not self._get_valid_params_mask(self.initial_params):
       raise ValueError("Initial guess is invalid!")
@@ -122,6 +122,7 @@ class BaseMCMCRoutine:
     self.raw_chain = mcmc_sampler.get_chain()
     self._check_chain_convergence(mcmc_sampler)
     self.fitted_posterior_samples = mcmc_sampler.get_chain(discard=int(burn_in_steps), thin=10, flat=True)
+    self.fitted_log_likelihoods = self._log_likelihood(self.fitted_posterior_samples)
     self.output_posterior_samples, self.output_param_labels = self._get_output_params()
     if numpy.array_equal(self.output_posterior_samples, self.fitted_posterior_samples):
       print("Estimating the KDE of only the fitted posterior...")
@@ -169,7 +170,7 @@ class BaseMCMCRoutine:
         f"Expected model output shape ({valid_params.shape[0]}, {measured_y.shape[0]}), got {modelled_y.shape}"
       )
       ## add a leading dimension to the measured data so it broadcasts across the vectorised param-rows
-      y_residuals_2d      = measured_y[None, :] - modelled_y
+      y_residuals_2d = measured_y[None, :] - modelled_y
       likelihood_sigma_2d = self.likelihood_sigma[None, :]
       ll_values[valid_params_mask] = -0.5 * numpy.sum(numpy.square(y_residuals_2d / likelihood_sigma_2d), axis=1)
     except Exception as error:
@@ -196,7 +197,9 @@ class BaseMCMCRoutine:
   def _save_posterior_samples(self):
     fitted_posterior_path = io_manager.combine_file_path_parts([ self.output_directory, f"{self.routine_name}_fitted_posterior_samples.npy" ])
     output_posterior_path = io_manager.combine_file_path_parts([ self.output_directory, f"{self.routine_name}_output_posterior_samples.npy" ])
+    log_likelihood_path   = io_manager.combine_file_path_parts([ self.output_directory, f"{self.routine_name}_fitted_log_likelihoods.npy" ])
     numpy.save(fitted_posterior_path, self.fitted_posterior_samples)
+    numpy.save(log_likelihood_path, self.fitted_log_likelihoods)
     if not numpy.array_equal(self.output_posterior_samples, self.fitted_posterior_samples):
       numpy.save(output_posterior_path, self.output_posterior_samples)
 

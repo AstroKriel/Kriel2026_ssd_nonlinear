@@ -86,7 +86,7 @@ class Stage2MCMCRoutine_free(base_mcmc.BaseMCMCRoutine):
     valid_gamma             = (0 < gamma) & (gamma < 2)
     valid_start_nl_time     = (0.1 * self.max_time < start_nl_time) & (start_nl_time < start_sat_time)
     valid_start_sat_time    = start_sat_time < self.max_time
-    valid_beta              = (1.0 < beta) & (beta < 2.0)
+    valid_beta              = (1.0 < beta) & (beta < 3.0)
     valid_params_mask = (
       valid_log10_init_energy & valid_log10_sat_energy & valid_gamma & valid_start_nl_time & valid_start_sat_time & valid_beta
     )

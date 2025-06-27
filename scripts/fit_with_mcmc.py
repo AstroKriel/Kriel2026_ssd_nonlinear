@@ -34,11 +34,11 @@ def main():
   io_manager.init_directory(output_directory)
   data_path   = io_manager.combine_file_path_parts([ data_directory, "dataset.json" ])
   data_dict   = json_files.read_json_file_into_dict(data_path)
-  time_values = data_dict["raw_data"]["time"]
+  time_values = data_dict["data"]["time"]
   t_turb      = data_dict["plasma_params"]["t_turb"]
   binned_data = mcmc_utils.compute_binned_data(
     x_values = time_values,
-    y_values = data_dict["raw_data"]["magnetic_energy"],
+    y_values = data_dict["data"]["magnetic_energy"],
     num_bins = int(numpy.floor(numpy.max(time_values) / t_turb)) # bin per uncorrelated eddy
   )
   ## build initial guess for stage 1: exponential + saturation
@@ -54,7 +54,7 @@ def main():
     ave_log10_energy_values = binned_data["log10_y_ave_s"],
     std_log10_energy_values = binned_data["log10_y_std_s"],
     initial_params          = stage1_initial_params,
-    plot_posterior_kde      = False
+    plot_posterior_kde      = True
   )
   stage1_mcmc.estimate_posterior()
   ## extract key outputs from stage 1
@@ -78,7 +78,7 @@ def main():
       std_energy_values  = binned_data["y_std_s"],
       initial_params     = stage2_initial_params,
       prior_kde          = stage2_prior_kde,
-      plot_posterior_kde = False
+      plot_posterior_kde = True
     )
   elif model_name == "quadratic":
     stage2_mcmc = Stage2MCMCRoutine_quadratic(
@@ -88,7 +88,7 @@ def main():
       std_energy_values  = binned_data["y_std_s"],
       initial_params     = stage2_initial_params,
       prior_kde          = stage2_prior_kde,
-      plot_posterior_kde = False
+      plot_posterior_kde = True
     )
   else:
     stage2_mcmc = Stage2MCMCRoutine_free(
@@ -98,7 +98,7 @@ def main():
       std_energy_values  = binned_data["y_std_s"],
       initial_params     = stage2_initial_params + (1.5,), # tuples are immutable
       prior_kde          = stage2_prior_kde,
-      plot_posterior_kde = False
+      plot_posterior_kde = True
     )
   stage2_mcmc.estimate_posterior()
   ## plot the measured vs modelled energy evolution (both linear and log10-transformed energy)

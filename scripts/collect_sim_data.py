@@ -16,30 +16,6 @@ from ww_flash_sims.sim_io import read_vi_data
 ## HELPER FUNCTIONS
 ## ###############################################################
 
-def measure_binned_stats(x_values, y_values)
-  x_bin_edges = numpy.linspace(0, numpy.max(x_values), num_bins+1)
-  x_bin_centers = 0.5 * (x_bin_edges[1:] + x_bin_edges[:-1])
-  x_bin_indices = numpy.digitize(x_values, x_bin_edges) - 1
-  y_ave_s = numpy.zeros(num_bins)
-  y_std_s = numpy.zeros(num_bins)
-  log10_y_ave_s = numpy.zeros(num_bins)
-  log10_y_std_s = numpy.zeros(num_bins)
-  for bin_index in range(num_bins):
-    bin_mask = (x_bin_indices == bin_index)
-    if numpy.any(bin_mask):
-      y_values_in_bin = numpy.array(y_values)[bin_mask]
-      log10_y_values_in_bin = numpy.log10(y_values_in_bin)
-      y_ave_s[bin_index] = numpy.mean(y_values_in_bin)
-      y_std_s[bin_index] = numpy.std(y_values_in_bin)
-      log10_y_ave_s[bin_index] = numpy.mean(log10_y_values_in_bin)
-      log10_y_std_s[bin_index] = numpy.std(log10_y_values_in_bin)
-    else:
-      y_ave_s[bin_index] = numpy.nan
-      y_std_s[bin_index] = numpy.nan
-      log10_y_ave_s[bin_index] = numpy.nan
-      log10_y_std_s[bin_index] = numpy.nan
-  return 
-
 def extract_sim_params(sim_directory: str | Path):
   sim_directory = str(sim_directory)
   match_plasma_pattern = re.search(r"Re(\d+)/Mach([\d.]+)/Pm(\d+)", sim_directory)
@@ -56,37 +32,22 @@ def extract_sim_params(sim_directory: str | Path):
 def load_data(sim_directory: str | Path):
   Mach_number, Re_number, Pm_number, Nres_number, version_number = extract_sim_params(sim_directory)
   sim_name = f"Mach{Mach_number}Re{Re_number}Pm{Pm_number}Nres{Nres_number}v{version_number}"
-  raw_time, raw_magnetic_energy = read_vi_data.read_vi_data(
+  time_values, magnetic_energy_values = read_vi_data.read_vi_data(
     directory    = sim_directory,
     dataset_name = "mag"
   )
-  subset_raw_time = raw_time[1:]
-  subset_raw_magnetic_energy = raw_magnetic_energy[1:]
-  t_turb = 0.5 / Mach_number # ell_turb / u_turb
-  num_t_turb = numpy.floor(numpy.max(subset_raw_time / t_turb))
-  binned_time = numpy.
-  # interp_time, interp_magnetic_energy = interpolate_data.interpolate_1d(
-  #   x_values = subset_raw_time,
-  #   y_values = subset_raw_magnetic_energy,
-  #   x_interp = numpy.linspace(subset_raw_time[0], subset_raw_time[-1], num_samples), # TODO: sample size should be based on t_turb
-  #   kind     = "linear"
-  # )
   return {
     "sim_name" : sim_name,
     "sim_directory" : str(sim_directory),
     "plasma_params" : {
-      "t_turb" : t_turb,
+      "t_turb" : 0.5 / Mach_number, # ell_turb / u_turb
       "Mach" : Mach_number,
       "Re" : Re_number,
       "Pm" : Pm_number,
     },
-    "raw_data" : {
-      "time" : subset_raw_time,
-      "magnetic_energy" : subset_raw_magnetic_energy,
-    },
-    "interp_data" : {
-      "time": interp_time,
-      "magnetic_energy": interp_magnetic_energy,
+    "data" : {
+      "time" : time_values[1:],
+      "magnetic_energy" : magnetic_energy_values[1:],
     }
   }
 
@@ -105,13 +66,10 @@ def main():
     sim_name = data_dict["sim_name"]
     sim_output_directory = io_manager.combine_file_path_parts([ base_output_directory, sim_name ])
     io_manager.init_directory(sim_output_directory)
-    raw_plot_params = dict(color="red", ls="-", lw=1, zorder=5)
-    sampled_plot_params = dict(color="black", marker="o", ms=3, zorder=3)
+    plot_params = dict(color="red", ls="-", lw=1, zorder=5)
     fig, axs = plot_manager.create_figure(num_rows=2, share_x=True)
-    axs[0].plot(data_dict["raw_data"]["time"], data_dict["raw_data"]["magnetic_energy"], **raw_plot_params)
-    axs[1].plot(data_dict["raw_data"]["time"], numpy.log10(data_dict["raw_data"]["magnetic_energy"]), **raw_plot_params)
-    axs[0].plot(data_dict["interp_data"]["time"], data_dict["interp_data"]["magnetic_energy"], **sampled_plot_params)
-    axs[1].plot(data_dict["interp_data"]["time"], numpy.log10(data_dict["interp_data"]["magnetic_energy"]), **sampled_plot_params)
+    axs[0].plot(data_dict["data"]["time"], data_dict["data"]["magnetic_energy"], **plot_params)
+    axs[1].plot(data_dict["data"]["time"], numpy.log10(data_dict["data"]["magnetic_energy"]), **plot_params)
     axs[0].set_ylabel(r"$\mathrm{energy}$")
     axs[1].set_ylabel(r"$\log_{10}(\mathrm{energy})$")
     axs[1].set_xlabel(r"time")
