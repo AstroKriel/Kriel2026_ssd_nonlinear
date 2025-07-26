@@ -295,6 +295,7 @@ dependencies = [
     { name = "emcee" },
     { name = "jormi" },
     { name = "scikit-learn" },
+    { name = "scipy" },
     { name = "ww-flash-sims" },
 ]
 
@@ -304,6 +305,7 @@ requires-dist = [
     { name = "emcee", specifier = ">=3.1.6" },
     { name = "jormi", directory = "../../sindri/python/submodules/jormi" },
     { name = "scikit-learn", specifier = ">=1.6.1" },
+    { name = "scipy", specifier = ">=1.15.2" },
     { name = "ww-flash-sims", directory = "../../sindri/python/ww_flash_sims" },
 ]
 

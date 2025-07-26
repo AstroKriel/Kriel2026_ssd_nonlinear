@@ -39,6 +39,9 @@ class BaseMCMCRoutine:
 
   def _get_kde_params(self, param_vectors):
     return numpy.asarray(param_vectors)
+  
+  def _other_logpdfs(self, param_vectors):
+    return numpy.zeros(numpy.asarray(param_vectors).shape[0])
 
   def _get_output_params(self):
     return self.fitted_posterior_samples, self.fitted_param_labels
@@ -95,9 +98,9 @@ class BaseMCMCRoutine:
 
   def estimate_posterior(
       self,
-      num_walkers   : int = 200,
-      num_steps     : int = 2e4,
-      burn_in_steps : int = 1e3,
+      num_walkers   : int = 60,
+      num_steps     : int = 1e4,
+      burn_in_steps : int = 3e3,
     ):
     if not self._get_valid_params_mask(self.initial_params):
       raise ValueError("Initial guess is invalid!")
@@ -151,7 +154,8 @@ class BaseMCMCRoutine:
       valid_params = numpy.atleast_2d(param_vectors[valid_params_mask])
       kde_vector   = self._get_kde_params(valid_params)
       kde_logpdfs  = self._prior_logpdf(kde_vector.T)
-      lp_values[valid_params_mask] = kde_logpdfs
+      other_logpdfs = self._other_logpdfs(valid_params)
+      lp_values[valid_params_mask] = kde_logpdfs + other_logpdfs
     else: lp_values[valid_params_mask] = 0.0 # uniform prior
     return lp_values
 

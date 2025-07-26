@@ -36,6 +36,10 @@ def load_data(sim_directory: str | Path):
     directory    = sim_directory,
     dataset_name = "mag"
   )
+  _, Mach_values  = read_vi_data.read_vi_data(
+    directory    = sim_directory,
+    dataset_name = "Mach"
+  )
   return {
     "sim_name" : sim_name,
     "sim_directory" : str(sim_directory),
@@ -45,8 +49,9 @@ def load_data(sim_directory: str | Path):
       "Re" : Re_number,
       "Pm" : Pm_number,
     },
-    "data" : {
+    "raw_data" : {
       "time" : time_values[1:],
+      "Mach_values" : Mach_values[1:],
       "magnetic_energy" : magnetic_energy_values[1:],
     }
   }
@@ -59,29 +64,42 @@ def load_data(sim_directory: str | Path):
 def main():
   base_output_directory = io_manager.combine_file_path_parts([ "/scratch/jh2/nk7952/kriel2025_nl_data" ])
   io_manager.init_directory(base_output_directory, verbose=False)
-  data_directories = sorted(Path("/scratch/").glob("*/nk7952/R*/Mach*/Pm*/*"))
-  data_directories = [
+  sim_directories = sorted(Path("/scratch/").glob("*/nk7952/R*/Mach*/Pm*/*"))
+  sim_directories = [
     sim_directory
-    for sim_directory in data_directories
-    if any(sim_nres in str(sim_directory) for sim_nres in ["288", "576", "1152"]) and ("anti" not in str(sim_directory))
+    for sim_directory in sim_directories
+    if io_manager.does_file_exist(
+      directory   = sim_directory,
+      file_name   = "Turb.dat",
+      raise_error = False
+    ) and (
+      any(
+        sim_nres in str(sim_directory)
+        for sim_nres in ["288", "576", "1152"]
+      )
+      and
+      "anti" not in str(sim_directory)
+    )
   ]
   [
     print(sim_directory)
-    for sim_directory in data_directories
+    for sim_directory in sim_directories
   ]
   print(" ")
-  for sim_directory in data_directories:
+  for sim_directory in sim_directories:
     data_dict = load_data(sim_directory)
     sim_name = data_dict["sim_name"]
     sim_output_directory = io_manager.combine_file_path_parts([ base_output_directory, sim_name ])
     io_manager.init_directory(sim_output_directory)
     plot_params = dict(color="red", ls="-", lw=1, zorder=5)
-    fig, axs = plot_manager.create_figure(num_rows=2, share_x=True)
-    axs[0].plot(data_dict["data"]["time"], data_dict["data"]["magnetic_energy"], **plot_params)
-    axs[1].plot(data_dict["data"]["time"], numpy.log10(data_dict["data"]["magnetic_energy"]), **plot_params)
-    axs[0].set_ylabel(r"$\mathrm{energy}$")
-    axs[1].set_ylabel(r"$\log_{10}(\mathrm{energy})$")
-    axs[1].set_xlabel(r"time")
+    fig, axs = plot_manager.create_figure(num_rows=3, share_x=True)
+    axs[0].plot(data_dict["raw_data"]["time"], data_dict["raw_data"]["Mach_values"], **plot_params)
+    axs[1].plot(data_dict["raw_data"]["time"], data_dict["raw_data"]["magnetic_energy"], **plot_params)
+    axs[2].plot(data_dict["raw_data"]["time"], numpy.log10(data_dict["raw_data"]["magnetic_energy"]), **plot_params)
+    axs[0].set_ylabel(r"$\mathcal{M}$")
+    axs[1].set_ylabel(r"$\mathrm{energy}$")
+    axs[2].set_ylabel(r"$\log_{10}(\mathrm{energy})$")
+    axs[2].set_xlabel(r"time")
     fig_file_name = f"dataset.png"
     fig_file_path = io_manager.combine_file_path_parts([ sim_output_directory, fig_file_name ])
     plot_manager.save_figure(fig, fig_file_path)
@@ -94,6 +112,7 @@ def main():
 ## ###############################################################
 ## SCRIPT ENTRY POINT
 ## ###############################################################
+
 if __name__ == "__main__":
   main()
   sys.exit(0)

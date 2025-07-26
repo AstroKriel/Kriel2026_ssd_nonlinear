@@ -68,15 +68,19 @@ def main():
     job_tag
     for _, job_tag in queued_jobs
   ]
-  # ## delete mcmc jobs from queue
+  ## delete mcmc jobs from queue
   # [
   #   shell_manager.execute_shell_command(command=f"qdel {job_id}", timeout_seconds=30)
   #   for job_id, job_tag in queued_jobs
   #   if "_mcmc_" in job_tag
   # ]
   ## create and submit mcmc job
-  for model_name in ["linear", "quadratic", "free"]:
-    for data_directory in data_directories:
+  for data_directory in data_directories:
+    for model_name in [
+        "linear",
+        "quadratic",
+        "free"
+      ]:
       submit_job(data_directory, model_name, queued_job_tags)
       print(" ")
 

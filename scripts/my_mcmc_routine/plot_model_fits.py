@@ -56,20 +56,6 @@ class PlotModelFits:
     axs[1].plot(self.x_values, dy_dx_values, **style)
     axs[1].axhline(y=0.0, color="black", ls="--", lw=1.5, zorder=0)
 
-  # def _plot_model(self, axs):
-  #   random_selector = numpy.random.default_rng(seed=42)
-  #   random_indices = random_selector.choice(
-  #     self.num_params,
-  #     size    = min(self.num_curves, self.num_params),
-  #     replace = False
-  #   )
-  #   modelled_curves = numpy.array([
-  #     self.model_func(self.fitted_posterior_samples[random_index]).squeeze()
-  #     for random_index in random_indices
-  #   ])
-  #   p16, p84 = numpy.percentile(modelled_curves, [16, 84], axis=0)
-  #   axs[0].fill_between(self.x_values, p16, p84, color="red", alpha=0.25, zorder=3)
-
   def _plot_model(self, axs):
     random_selector = numpy.random.default_rng(seed=42)
     num_samples     = self.fitted_posterior_samples.shape[0]

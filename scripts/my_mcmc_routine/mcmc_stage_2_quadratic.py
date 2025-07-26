@@ -81,9 +81,9 @@ class Stage2MCMCRoutine_quadratic(base_mcmc.BaseMCMCRoutine):
     log10_init_energy, log10_sat_energy, gamma, start_nl_time, start_sat_time = param_vectors.T
     valid_log10_init_energy = (-30 < log10_init_energy) & (log10_init_energy < -5)
     valid_log10_sat_energy  = (-5 < log10_sat_energy) & (log10_sat_energy < 0)
-    valid_gamma             = (0 < gamma) & (gamma < 2)
+    valid_gamma             = (0 < gamma) & (gamma < 10)
     valid_start_nl_time     = (0.1 * self.max_time < start_nl_time) & (start_nl_time < start_sat_time)
-    valid_start_sat_time    = start_sat_time < self.max_time
+    valid_start_sat_time    = start_sat_time < 0.9 * self.max_time
     valid_params_mask = (
       valid_log10_init_energy & valid_log10_sat_energy & valid_gamma & valid_start_nl_time & valid_start_sat_time
     )

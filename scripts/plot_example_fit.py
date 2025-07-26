@@ -7,6 +7,7 @@
 
 import numpy
 from pathlib import Path
+from scipy.stats import levy
 from jormi.ww_plots import plot_manager
 from jormi.ww_io import io_manager, json_files
 import my_mcmc_routine
@@ -31,31 +32,31 @@ def plot_param_percentiles(ax, samples, orientation):
 class PlotFinalFits:
 
   def __init__(self, sim_name, num_curves: int = 100):
-    self.data_directory = Path(f"/home/586/nk7952/asgard/mimir/kriel_2025_ssd_nl/data/{sim_name}").resolve()
+    self.data_directory = Path(f"/scratch/jh2/nk7952/kriel2025_nl_data/{sim_name}").resolve()
     data_path = io_manager.combine_file_path_parts([ self.data_directory, "dataset.json" ])
     data_dict = json_files.read_json_file_into_dict(data_path)
     stage2_fitted_posterior_path = io_manager.combine_file_path_parts([ self.data_directory, "stage2_fitted_posterior_samples.npy" ])
-    self.fitted_posterior_samples = numpy.load(stage2_fitted_posterior_path)
-    self.num_params = self.fitted_posterior_samples.shape[1]
-    self.x_values   = data_dict["interp_data"]["time"]
-    self.y_values   = data_dict["interp_data"]["magnetic_energy"]
+    # self.fitted_posterior_samples = numpy.load(stage2_fitted_posterior_path)
+    # self.num_params = self.fitted_posterior_samples.shape[1]
+    self.x_values   = data_dict["raw_data"]["time"]
+    self.y_values   = data_dict["raw_data"]["magnetic_energy"]
     self.num_curves = num_curves
-    stage2_mcmc = my_mcmc_routine.MCMCStage2Routine(
-      output_directory   = self.data_directory,
-      x_values           = self.x_values,
-      y_values           = self.y_values,
-      initial_params     = tuple(
-        numpy.median(self.fitted_posterior_samples[:,param_index])
-        for param_index in range(self.num_params)
-      )
-    )
-    self.model_func = stage2_mcmc._model
+    # stage2_mcmc = my_mcmc_routine.MCMCStage2Routine(
+    #   output_directory   = self.data_directory,
+    #   x_values           = self.x_values,
+    #   y_values           = self.y_values,
+    #   initial_params     = tuple(
+    #     numpy.median(self.fitted_posterior_samples[:,param_index])
+    #     for param_index in range(self.num_params)
+    #   )
+    # )
+    # self.model_func = stage2_mcmc._model
 
   def plot(self):
     fig, axs = plot_manager.create_figure(num_rows=2, share_x=True)
     self._plot_data(axs)
-    self._plot_model(axs)
-    self._annotate_fitted_params(axs)
+    # self._plot_model(axs)
+    # self._annotate_fitted_params(axs)
     self._label_plot(axs)
     fig_name = f"example_fit.png"
     fig_file_path = io_manager.combine_file_path_parts([self.data_directory, fig_name])
@@ -85,17 +86,28 @@ class PlotFinalFits:
         log10_y_ave_s[bin_index] = numpy.nan
         log10_y_std_s[bin_index] = numpy.nan
     valid_bins = ~numpy.isnan(y_ave_s)
-    axs[1].errorbar(
-      x_bin_centers[valid_bins],
-      y_ave_s[valid_bins],
-      yerr = y_std_s[valid_bins],
-      fmt="o", color="blue", markersize=4, elinewidth=1, capsize=2, zorder=7
-    )
+    # axs[1].errorbar(
+    #   x_bin_centers[valid_bins],
+    #   y_ave_s[valid_bins],
+    #   yerr = y_std_s[valid_bins],
+    #   fmt="o", color="blue", markersize=4, elinewidth=1, capsize=2, zorder=7
+    # )
     axs[0].errorbar(
       x_bin_centers[valid_bins],
       log10_y_ave_s[valid_bins],
       yerr = log10_y_std_s[valid_bins],
       fmt="o", color="blue", markersize=4, elinewidth=1, capsize=2, zorder=7
+    )
+    t_turb = 0.5 / 5
+    axs[1].plot(
+      x_bin_centers[valid_bins],
+      levy.logpdf(x_bin_centers[valid_bins], loc=7, scale=t_turb),
+      color="red", ls="-"
+    )
+    axs[1].plot(
+      x_bin_centers[valid_bins],
+      levy.logpdf(x_bin_centers[valid_bins], loc=7, scale=10*t_turb),
+      color="red", ls="--"
     )
 
   def _plot_model(self, axs):
@@ -142,7 +154,7 @@ class PlotFinalFits:
 
 
 def main():
-  sim_name = "Mach0.1Re1500Pm1Nres576v2"
+  sim_name = "Mach5.0Re1500Pm1Nres576v5"
   PlotFinalFits(sim_name).plot()
 
 if __name__ == "__main__":

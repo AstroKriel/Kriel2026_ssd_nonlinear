@@ -70,8 +70,8 @@ class Stage1MCMCRoutine(base_mcmc.BaseMCMCRoutine):
     num_local_walkers = param_vectors.shape[0]
     log10_init_energy, gamma, transition_time = param_vectors.T
     valid_log10_init_energy = (-30 < log10_init_energy) & (log10_init_energy < -5)
-    valid_gamma             = (0 < gamma) & (gamma < 2)
-    valid_transition_time   = (0.25 * self.max_time < transition_time) & (transition_time < 0.9 * self.max_time)
+    valid_gamma             = (0 < gamma) & (gamma < 10)
+    valid_transition_time   = (0.1 * self.max_time < transition_time) & (transition_time < 0.9 * self.max_time)
     valid_params_mask       = valid_log10_init_energy & valid_gamma & valid_transition_time
     if num_local_walkers == 1:
       return valid_params_mask[0]

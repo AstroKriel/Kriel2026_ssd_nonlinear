@@ -157,11 +157,11 @@ class PlotModelPosteriors:
         ax = axs[row_index, col_index]
         if col_index > row_index: continue
         if row_index == col_index:
-          ax.set_xlim(param_ranges[row_index][0], param_ranges[row_index][1])
+          # ax.set_xlim(param_ranges[row_index][0], param_ranges[row_index][1]) # debug
           if col_index > 0: ax.tick_params(axis="y", labelright=True)
         else:
-          ax.set_xlim(param_ranges[col_index][0], param_ranges[col_index][1])
-          ax.set_ylim(param_ranges[row_index][0], param_ranges[row_index][1])
+          # ax.set_xlim(param_ranges[col_index][0], param_ranges[col_index][1]) # debug
+          # ax.set_ylim(param_ranges[row_index][0], param_ranges[row_index][1]) # debug
           if col_index == 0:
             ax.set_ylabel(param_labels[row_index])
           if col_index > 0: ax.set_yticklabels([])

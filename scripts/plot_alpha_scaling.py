@@ -6,18 +6,25 @@ from jormi.ww_plots import plot_manager, plot_data, add_annotations, add_color
 
 
 def extract_key_param_samples(fitted_posterior_samples):
-  init_energy_samples    = 10**fitted_posterior_samples[:, 0]
-  sat_energy_samples     = 10**fitted_posterior_samples[:, 1]
-  gamma_samples          = fitted_posterior_samples[:, 2]
-  start_nl_time_samples  = fitted_posterior_samples[:, 3]
-  start_sat_time_samples = fitted_posterior_samples[:, 4]
-  start_nl_energy        = init_energy_samples * numpy.exp(gamma_samples * start_nl_time_samples)
-  alpha_samples          = (sat_energy_samples - start_nl_energy) / (start_sat_time_samples - start_nl_time_samples)
-  return gamma_samples, alpha_samples, sat_energy_samples
+  # init_energy_samples    = 10**fitted_posterior_samples[:,0]
+  # sat_energy_samples     = 10**fitted_posterior_samples[:,1]
+  # gamma_samples          = fitted_posterior_samples[:,2]
+  # start_nl_time_samples  = fitted_posterior_samples[:,3]
+  # start_sat_time_samples = fitted_posterior_samples[:,4]
+  # start_nl_energy        = init_energy_samples * numpy.exp(gamma_samples * start_nl_time_samples)
+  # alpha_samples          = (sat_energy_samples - start_nl_energy) / (start_sat_time_samples - start_nl_time_samples)
+  if fitted_posterior_samples.shape[1] > 4: return None
+  sat_energy_samples     = 10**fitted_posterior_samples[:,0]
+  start_nl_time_samples  = fitted_posterior_samples[:,1]
+  start_sat_time_samples = fitted_posterior_samples[:,2]
+  beta_samples           = fitted_posterior_samples[:,3]
+  alpha_samples = sat_energy_samples / (start_sat_time_samples - start_nl_time_samples)**beta_samples
+  return alpha_samples
 
 def main():
-  base_directory = Path("../data/").resolve()
-  data_directories = io_manager.ItemFilter(
+  mcmc_model = "free"
+  base_directory = Path("/scratch/jh2/nk7952/kriel2025_nl_data/").resolve()
+  directories = io_manager.ItemFilter(
     include_string = ["Mach", "Re", "Pm", "Nres"]
   ).filter(
     directory = base_directory
@@ -28,90 +35,93 @@ def main():
     vmin      = numpy.log10(100),
     vmax      = numpy.log10(5000),
   )
-  ax_inset = add_annotations.add_inset_axis(
-    ax           = ax,
-    bounds       = (0.075, 0.6, 0.375, 0.35),
-    x_label      = r"$\mathrm{Re}$",
-    fontsize     = 20,
-    x_label_side = "bottom",
-    y_label_side = "right",
-  )
-  for data_directory in data_directories:
-    sim_data_path = io_manager.combine_file_path_parts([ data_directory, "dataset.json" ])
+  # ax_inset = add_annotations.add_inset_axis(
+  #   ax           = ax,
+  #   bounds       = (0.075, 0.6, 0.375, 0.35),
+  #   x_label      = r"$\mathrm{Re}$",
+  #   fontsize     = 20,
+  #   x_label_side = "bottom",
+  #   y_label_side = "right",
+  # )
+  for directory in directories:
+    sim_data_path = io_manager.combine_file_path_parts([ directory, "dataset.json" ])
     sim_data_dict = json_files.read_json_file_into_dict(sim_data_path, verbose=False)
-    fit_data_path = io_manager.combine_file_path_parts([ data_directory, "stage2_fitted_posterior_samples.npy" ])
+    fit_data_path = io_manager.combine_file_path_parts([ directory, mcmc_model, f"stage2_{mcmc_model}_fitted_posterior_samples.npy" ])
     if not io_manager.does_file_exist(fit_data_path): continue
-    print(f"Loading: {data_directory}")
+    print(f"Loading: {directory}")
     fitted_posterior_samples = numpy.load(fit_data_path)
-    _, alpha_samples, _ = extract_key_param_samples(fitted_posterior_samples)
-    alpha_p16, alpha_p50, alpha_p84 = numpy.percentile(alpha_samples, [16, 50, 84])
+    alpha_samples = extract_key_param_samples(fitted_posterior_samples)
+    if alpha_samples is None: continue
+    Mach_values = sim_data_dict["raw_data"]["Mach_values"]
+    Mach_p16, Mach_p50, Mach_p84 = numpy.percentile(numpy.log10(Mach_values), [16, 50, 84])
+    Mach_err_lower = Mach_p50 - Mach_p16
+    Mach_err_upper = Mach_p84 - Mach_p50
+    Re_number = sim_data_dict["plasma_params"]["Re"]
+    alpha_p16, alpha_p50, alpha_p84 = numpy.percentile(numpy.log10(alpha_samples), [16, 50, 84])
     alpha_err_lower = alpha_p50 - alpha_p16
     alpha_err_upper = alpha_p84 - alpha_p50
-    Mach_number = sim_data_dict["plasma_params"]["Mach"]
-    Re_number = sim_data_dict["plasma_params"]["Re"]
     Re_color = cmap_Re(norm_Re(numpy.log10(Re_number)))
+    if Re_number < 1000: continue
     ax.errorbar(
-      Mach_number,
+      Mach_p50,
       alpha_p50,
+      xerr = [
+        [Mach_err_lower],
+        [Mach_err_upper],
+      ],
       yerr = [
         [alpha_err_lower],
         [alpha_err_upper],
       ],
-      fmt="o", color=Re_color, markersize=5, capsize=3, zorder=3
+      fmt="o", color=Re_color, mec="black", markersize=5, capsize=3, zorder=3
     )
-    ax_inset.errorbar(
-      Re_number,
-      alpha_p50,
-      yerr = [
-        [alpha_err_lower],
-        [alpha_err_upper],
-      ],
-      fmt="o", color=Re_color, markersize=5, capsize=3, zorder=3
-    )
-  ax.set_xlabel(r"$\langle u^2 \rangle^{1/2}_{\mathcal{V}, \mathrm{kin}} / c_s$")
-  ax.set_ylabel(r"$\alpha$")
-  ax.set_xscale("log")
-  ax.set_yscale("log")
-  ax.set_xlim([0.01, 10])
-  ax.set_ylim([1e-7, 1])
-  ax_inset.set_xscale("log")
-  ax_inset.set_yscale("log")
-  ax_inset.set_xlim([100, 1e4])
-  ax_inset.set_ylim([1e-7, 1])
-  ax_inset.set_yticklabels([])
-  ax.axvline(x=1, color="black", ls="--", lw=1.5)
-  x_values = numpy.logspace(-3, 2, 100)
-  # coefficient = fit_data.get_powerlaw_coefficient(exponent=3, x_ref=1e-1, y_ref=1e-5)
-  log10_coefficient = fit_data.get_linear_intercept(slope=3, x_ref=-1, y_ref=-5)
-  print(10**log10_coefficient)
+  ax.set_xlabel(r"$\log_{10}(\mathcal{M})$")
+  ax.set_ylabel(r"$\log_{10}(\gamma_{\rm nl})$")
+  ax.set_xlim([-1.5, 1])
+  ax.set_ylim([-6, -0.5])
+  ax.axvline(x=0, color="black", ls=":", lw=1.5)
+  x_values = numpy.linspace(-2, 2, 100)
   plot_data.plot_wo_scaling_axis(
     ax       = ax,
     x_values = x_values,
-    y_values = 10**log10_coefficient * x_values**3,
+    y_values = -2 + 3 * x_values,
     ls       = "--",
     lw       = 1.5
   )
   plot_data.plot_wo_scaling_axis(
     ax       = ax,
     x_values = x_values,
-    y_values = 0.08 * x_values**3,
-    color    = "red",
-    ls       = "--",
+    y_values = -2 + x_values,
+    ls       = "-",
     lw       = 1.5
   )
-  rotation = fit_data.get_line_angle_in_box(
+  rotation1 = fit_data.get_line_angle_in_box(
     slope               = 3,
-    domain_bounds       = (-2, 1, -7, 0),
+    domain_bounds       = (-1.5, 1.0, -6, -0.5),
     domain_aspect_ratio = 6/4,
   )
   add_annotations.add_text(
     ax          = ax,
-    x_pos       = 0.1,
-    y_pos       = 0.05,
+    x_pos       = 0.175,
+    y_pos       = 0.325,
     label       = r"$10^{-2}\, \mathcal{M}^3$",
-    x_alignment = "left",
-    y_alignment = "bottom",
-    rotate_deg  = rotation
+    x_alignment = "center",
+    y_alignment = "center",
+    rotate_deg  = rotation1
+  )
+  rotation2 = fit_data.get_line_angle_in_box(
+    slope               = 1,
+    domain_bounds       = (-1.5, 1.0, -6, -0.5),
+    domain_aspect_ratio = 6/4,
+  )
+  add_annotations.add_text(
+    ax          = ax,
+    x_pos       = 0.175,
+    y_pos       = 0.625,
+    label       = r"$10^{-2}\, \mathcal{M}$",
+    x_alignment = "center",
+    y_alignment = "center",
+    rotate_deg  = rotation2
   )
   add_color.add_cbar_from_cmap(
     ax    = ax,
@@ -120,7 +130,7 @@ def main():
     label = r"$\log_{10}(\mathrm{Re})$",
     side  = "top",
   )
-  plot_manager.save_figure(fig, "alpha_scaling.png")
+  plot_manager.save_figure(fig, f"alpha_scaling_{mcmc_model}.png")
 
 
 if __name__ == "__main__":
