@@ -22,8 +22,8 @@ class Stage1MCMCRoutine(base_mcmc.BaseMCMCRoutine):
       initial_params          : tuple[float, ...],
       plot_posterior_kde      : bool = True
     ):
-    self.log10_e  = numpy.log10(numpy.exp(1))
-    self.max_time = numpy.max(time_values)
+    self.log10_e = numpy.log10(numpy.exp(1))
+    self.max_sim_time = numpy.max(time_values)
     super().__init__(
       routine_name        = "stage1",
       output_directory    = output_directory,
@@ -71,7 +71,7 @@ class Stage1MCMCRoutine(base_mcmc.BaseMCMCRoutine):
     log10_init_energy, gamma, transition_time = param_vectors.T
     valid_log10_init_energy = (-30 < log10_init_energy) & (log10_init_energy < -5)
     valid_gamma             = (0 < gamma) & (gamma < 10)
-    valid_transition_time   = (0.1 * self.max_time < transition_time) & (transition_time < 0.9 * self.max_time)
+    valid_transition_time   = (0.1 * self.max_sim_time < transition_time) & (transition_time < 0.9 * self.max_sim_time)
     valid_params_mask       = valid_log10_init_energy & valid_gamma & valid_transition_time
     if num_local_walkers == 1:
       return valid_params_mask[0]
