@@ -15,6 +15,8 @@ from ww_flash_sims.sim_io import read_vi_data
 ## HELPER FUNCTIONS
 ## ###############################################################
 
+## extract target simulation parameters from directory path
+## assumes naming convention with Re/Mach/Pm/resolution(version)
 def extract_sim_params(sim_directory: str | Path):
   sim_directory = str(sim_directory)
   match_plasma_pattern = re.search(r"Re(\d+)/Mach([\d.]+)/Pm(\d+)", sim_directory)
@@ -28,6 +30,7 @@ def extract_sim_params(sim_directory: str | Path):
   version_number = int(match_sim_pattern.group(2)) if match_sim_pattern.group(2) else 1
   return Mach_number, Re_number, Pm_number, Nres_number, version_number
 
+## load and store both desired simulation parameters and volume integrated quantities
 def load_data(sim_directory: str | Path):
   Mach_number, Re_number, Pm_number, Nres_number, version_number = extract_sim_params(sim_directory)
   sim_name = f"Mach{Mach_number}Re{Re_number}Pm{Pm_number}Nres{Nres_number}v{version_number}"
@@ -53,6 +56,7 @@ def load_data(sim_directory: str | Path):
     }
   }
 
+## generate diagnostic plots and save dataset
 def plot_and_save_data(dataset: dict, output_directory: Path):
   io_manager.init_directory(output_directory)
   fig, axs = plot_manager.create_figure(num_rows=3, share_x=True)
@@ -77,6 +81,7 @@ def plot_and_save_data(dataset: dict, output_directory: Path):
 def main():
   base_output_directory = io_manager.combine_file_path_parts([ "/scratch/jh2/nk7952/kriel2025_nl_data" ])
   io_manager.init_directory(base_output_directory, verbose=False)
+  ## find matching simulation directories under /scratch/
   sim_directories = [
     sim_directory
     for sim_directory in sorted(Path("/scratch/").glob("*/nk7952/R*/Mach*/Pm*/*"))
@@ -93,11 +98,13 @@ def main():
       "anti" not in str(sim_directory)
     )
   ]
+  ## display which directories are going to be looked at
   [
     print(sim_directory)
     for sim_directory in sim_directories
   ]
   print(" ")
+  ## process each simulation
   for sim_directory in sim_directories:
     dataset = load_data(sim_directory)
     sim_output_directory = io_manager.combine_file_path_parts([ base_output_directory, dataset["sim_name"] ])
