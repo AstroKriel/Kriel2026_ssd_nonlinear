@@ -10,8 +10,46 @@ from my_mcmc_fitting_routine.mcmc_stage_1 import Stage1MCMCRoutine
 from my_mcmc_fitting_routine.mcmc_stage_2_free import Stage2MCMCRoutine_free
 from my_mcmc_fitting_routine.mcmc_stage_2_linear import Stage2MCMCRoutine_linear
 from my_mcmc_fitting_routine.mcmc_stage_2_quadratic import Stage2MCMCRoutine_quadratic
-from my_mcmc_fitting_routine import mcmc_utils
 from my_mcmc_fitting_routine.plot_final_fits import PlotFinalFits
+
+
+## ###############################################################
+## HELPER FUNCTIONS
+## ###############################################################
+
+def compute_median_params_from_kde(kde, num_samples=10000):
+  samples = kde.resample(num_samples)
+  return tuple(numpy.median(samples, axis=1))
+
+def compute_binned_data(x_values, y_values, num_bins):
+  x_bin_edges = numpy.linspace(0, numpy.max(x_values), num_bins+1)
+  x_bin_centers = 0.5 * (x_bin_edges[1:] + x_bin_edges[:-1])
+  x_bin_indices = numpy.digitize(x_values, x_bin_edges) - 1
+  y_ave_s = numpy.zeros(num_bins)
+  y_std_s = numpy.zeros(num_bins)
+  log10_y_ave_s = numpy.zeros(num_bins)
+  log10_y_std_s = numpy.zeros(num_bins)
+  for bin_index in range(num_bins):
+    bin_mask = (x_bin_indices == bin_index)
+    if numpy.any(bin_mask):
+      y_values_in_bin = numpy.array(y_values)[bin_mask]
+      log10_y_values_in_bin = numpy.log10(y_values_in_bin)
+      y_ave_s[bin_index] = numpy.mean(y_values_in_bin)
+      y_std_s[bin_index] = numpy.std(y_values_in_bin)
+      log10_y_ave_s[bin_index] = numpy.mean(log10_y_values_in_bin)
+      log10_y_std_s[bin_index] = numpy.std(log10_y_values_in_bin)
+    else:
+      y_ave_s[bin_index] = numpy.nan
+      y_std_s[bin_index] = numpy.nan
+      log10_y_ave_s[bin_index] = numpy.nan
+      log10_y_std_s[bin_index] = numpy.nan
+  return {
+    "x_bin_centers": x_bin_centers,
+    "y_ave_s": y_ave_s,
+    "y_std_s": y_std_s,
+    "log10_y_ave_s": log10_y_ave_s,
+    "log10_y_std_s": log10_y_std_s
+  }
 
 
 ## ###############################################################
@@ -31,13 +69,12 @@ def main():
   ## read in magnetic energy evolution
   output_directory = io_manager.combine_file_path_parts([ data_directory, model_name ])
   io_manager.init_directory(output_directory)
-  data_path = io_manager.combine_file_path_parts([ data_directory, "dataset.json" ])
-  data_dict = json_files.read_json_file_into_dict(data_path)
+  data_filepath = io_manager.combine_file_path_parts([ data_directory, "dataset.json" ])
+  data_dict = json_files.read_json_file_into_dict(data_filepath)
   ## subset the simulation domain: roughly half of the data points should make up the growth phase
-  full_time_values = numpy.array(data_dict["raw_data"]["time"])
-  full_magnetic_energy = numpy.array(data_dict["raw_data"]["magnetic_energy"])
-  t_turb = data_dict["plasma_params"]["t_turb"]
-  Mach_number = data_dict["plasma_params"]["Mach"]
+  full_time_values = numpy.array(data_dict["measured_data"]["time_values"])
+  full_magnetic_energy = numpy.array(data_dict["measured_data"]["magnetic_energy_values"])
+  target_Mach_number = data_dict["plasma_params"]["target_Mach"]
   max_total_time = numpy.max(full_time_values)
   max_subset_time = max_total_time # initialise
   max_sat_fraction_of_subset_time = 0.35
@@ -48,7 +85,7 @@ def main():
     subset_time_values = full_time_values[time_mask]
     subset_magnetic_energy = full_magnetic_energy[time_mask]
     max_subset_time = numpy.max(subset_time_values)
-    binned_data = mcmc_utils.compute_binned_data(
+    binned_data = compute_binned_data(
       x_values = subset_time_values,
       y_values = subset_magnetic_energy,
       num_bins = 100
@@ -79,8 +116,8 @@ def main():
   # stage1_mcmc._make_plots()
   ## extract key outputs from stage 1
   stage2_prior_kde = stage1_mcmc.output_posterior_kde
-  ## build initial guess for stage 2: exponential + linear backreaction + saturation
-  stage1_median_output_params = mcmc_utils.compute_median_params_from_kde(stage2_prior_kde)
+  ## build initial guess for stage 2
+  stage1_median_output_params = compute_median_params_from_kde(stage2_prior_kde)
   stage2_initial_params = (
     stage1_median_output_params[0], # log10(E_init)
     stage1_median_output_params[1], # log10(E_sat)
@@ -115,16 +152,10 @@ def main():
       time_values        = binned_data["x_bin_centers"],
       ave_energy_values  = binned_data["y_ave_s"],
       std_energy_values  = binned_data["y_std_s"],
-      initial_params     = tuple([
-        stage2_initial_params[0], # log10(E_init)
-        stage2_initial_params[1], # log10(E_sat)
-        stage2_initial_params[2], # gamma
-        stage2_initial_params[3], # t_nl
-        1.5 # exponent
-      ]),
+      initial_params     = stage2_initial_params,
       prior_kde          = stage2_prior_kde,
       plot_posterior_kde = True,
-      t_turb             = t_turb
+      is_supersonic      = target_Mach_number > 1
     )
   stage2_mcmc.estimate_posterior()
   ## plot the measured vs modelled energy evolution (both linear and log10-transformed energy)
