@@ -112,8 +112,8 @@ def main():
     if sat_fraction_of_subset_time >= max_sat_fraction_of_subset_time: break
     max_subset_time *= 0.85 # trim off 15% of tail
     print(f"Trimmed to {max_subset_time:.2f}, re-running stage 1...")
-  # stage1_mcmc.plot_posterior_kde = True
-  # stage1_mcmc._make_plots()
+  stage1_mcmc.plot_posterior_kde = True
+  stage1_mcmc._make_plots()
   ## extract key outputs from stage 1
   stage2_prior_kde = stage1_mcmc.output_posterior_kde
   ## build initial guess for stage 2
@@ -154,8 +154,7 @@ def main():
       std_energy_values  = binned_data["y_std_s"],
       initial_params     = stage2_initial_params,
       prior_kde          = stage2_prior_kde,
-      plot_posterior_kde = True,
-      is_supersonic      = target_Mach_number > 1
+      plot_posterior_kde = True
     )
   stage2_mcmc.estimate_posterior()
   ## plot the measured vs modelled energy evolution (both linear and log10-transformed energy)
