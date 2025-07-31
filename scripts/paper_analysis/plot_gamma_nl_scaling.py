@@ -4,7 +4,9 @@ from jormi.ww_io import io_manager, json_files
 from jormi.ww_data import fit_data
 from jormi.ww_plots import plot_manager, plot_data, add_annotations, add_color
 
-MCMC_MODEL = "free"
+MCMC_MODEL = "linear"
+# MCMC_MODEL = "quadratic"
+# MCMC_MODEL = "free"
 
 def extract_key_param_samples(fitted_posterior_samples):
   num_params = fitted_posterior_samples.shape[1]
@@ -16,7 +18,7 @@ def extract_key_param_samples(fitted_posterior_samples):
   if   MCMC_MODEL == "linear":    exponent_samples = 1.0
   elif MCMC_MODEL == "quadratic": exponent_samples = 2.0
   elif MCMC_MODEL == "free":      exponent_samples = fitted_posterior_samples[:,5]
-  else: raise ValueError("model does not make sense.")
+  else: raise ValueError("model makes no sense.")
   nl_start_energy        = init_energy_samples * numpy.exp(gamma_exp_samples * nl_start_time_samples)
   gamma_nl_samples = (sat_energy_samples - nl_start_energy) / (sat_start_time_samples - nl_start_time_samples)**exponent_samples
   return gamma_nl_samples
@@ -45,7 +47,7 @@ def main():
   for directory in directories:
     sim_data_path = io_manager.combine_file_path_parts([ directory, "dataset.json" ])
     sim_data_dict = json_files.read_json_file_into_dict(sim_data_path, verbose=False)
-    fit_data_path = io_manager.combine_file_path_parts([ directory, MCMC_MODEL, f"stage2_{MCMC_MODEL}_fitted_posterior_samples.npy" ])
+    fit_data_path = io_manager.combine_file_path_parts([ directory, f"{MCMC_MODEL}_better_binning", f"stage2_{MCMC_MODEL}_fitted_posterior_samples.npy" ])
     if not io_manager.does_file_exist(fit_data_path): continue
     print(f"Loading: {directory}")
     fitted_posterior_samples = numpy.load(fit_data_path)
@@ -129,7 +131,7 @@ def main():
     label = r"$\log_{10}(\mathrm{Re})$",
     side  = "top",
   )
-  plot_manager.save_figure(fig, f"gamma_nl_scaling_{MCMC_MODEL}.png")
+  plot_manager.save_figure(fig, f"gamma_nl_scaling_{MCMC_MODEL}_better_binning.png")
 
 
 if __name__ == "__main__":

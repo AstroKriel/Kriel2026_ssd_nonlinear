@@ -136,8 +136,8 @@ class Stage2MCMCRoutine_free(base_mcmc.BaseMCMCRoutine):
     for row_index in range(len(axs)):
       mcmc_utils.plot_param_percentiles(axs[row_index], nl_start_time_samples, orientation="vertical")
       mcmc_utils.plot_param_percentiles(axs[row_index], sat_start_time_samples, orientation="vertical")
-      axs[row_index].axvline(self.max_nl_time, color="red")
-      axs[row_index].axvline(self.max_sat_time, color="red")
+      axs[row_index].axvline(self.max_nl_time, color="red", ls="--")
+      axs[row_index].axvline(self.max_sat_time, color="red", ls="--")
 
 
 ## END OF MODULE

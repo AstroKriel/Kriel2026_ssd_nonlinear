@@ -38,16 +38,16 @@ def main():
     for directory in directories_in_suite:
       sim_data_path = io_manager.combine_file_path_parts([ directory, "dataset.json" ])
       sim_data_dict = json_files.read_json_file_into_dict(sim_data_path, verbose=False)
-      fit_data_path = io_manager.combine_file_path_parts([ directory, "free", f"stage2_free_fitted_posterior_samples.npy" ])
+      fit_data_path = io_manager.combine_file_path_parts([ directory, "free_better_binning", f"stage2_free_fitted_posterior_samples.npy" ])
       if not io_manager.does_file_exist(fit_data_path): continue
       fitted_posterior_samples = numpy.load(fit_data_path)
       nl_exponent_samples = extract_key_param_samples(fitted_posterior_samples)
       all_nl_exponent_samples.append(nl_exponent_samples)
       p50 = numpy.percentile(nl_exponent_samples, 50)
       if (sim_data_dict["plasma_params"]["target_Mach"] < 1) and (p50 > 1.5):
-        print(f"not linear ({p50:.2f}): {directory}/free/stage2_free_fitted_posteriors.png")
+        print(f"not linear ({p50:.2f}): {directory}/free_better_binning/stage2_free_fitted_posteriors.png")
       elif (sim_data_dict["plasma_params"]["target_Mach"] > 1) and (p50 < 1.5):
-        print(f"not quadratic ({p50:.2f}): {directory}/free/stage2_free_fitted_posteriors.png")
+        print(f"not quadratic ({p50:.2f}): {directory}/free_better_binning/stage2_free_fitted_posteriors.png")
     if len(all_nl_exponent_samples) == 0:
       print("Need to look at:", directory)
       continue
@@ -116,7 +116,7 @@ def main():
     # label_spacing  = float = 0.5,
     # column_spacing = float = 0.5,
   )
-  plot_manager.save_figure(fig, f"nl_exponent_scaling.png")
+  plot_manager.save_figure(fig, f"nl_exponent_scaling_better_binning.png")
 
 
 if __name__ == "__main__":

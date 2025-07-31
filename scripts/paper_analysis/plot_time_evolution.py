@@ -202,7 +202,7 @@ def main():
     cbar_padding = 1e-2
   )
 
-  plot_manager.save_figure(fig, "time_volution.png")
+  plot_manager.save_figure(fig, "time_evolution.png")
 
 
 ## ###############################################################

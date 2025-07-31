@@ -26,35 +26,50 @@ def extract_data_from_sim(samples: np.ndarray, model: str):
 
 
 class EnsembleAverager:
-  model_types   = ["free", "linear", "quadratic"]
-  quantity_keys = ["gamma_exp", "gamma_nl", "nl_duration", "sat_energy", "nl_exponent"]
+  fit_types = [
+    "free",
+    "linear",
+    "quadratic",
+    "free_better_binning",
+    "linear_better_binning",
+    "quadratic_better_binning"
+  ]
+  quantity_keys = [
+    "gamma_exp",
+    "gamma_nl",
+    "nl_duration",
+    "sat_energy",
+    "nl_exponent"
+  ]
 
   def __init__(self, directories):
     self.directories = directories
     self.sim_summary = {}
 
   def run(self):
-    for model_type in self.model_types:
+    for fit_type in self.fit_types:
       combined_data = {
         quantity_key : []
         for quantity_key in self.quantity_keys
       }
+      model_type = fit_type.split("_better")[0]
       for directory in self.directories:
         data_path = io_manager.combine_file_path_parts([
-          directory, model_type, f"stage2_{model_type}_fitted_posterior_samples.npy"
+          directory, fit_type, f"stage2_{model_type}_fitted_posterior_samples.npy"
         ])
         if not io_manager.does_file_exist(data_path): continue
+        print("Looking at:", directory)
         sim_data = np.load(data_path)
         extracted_data = extract_data_from_sim(sim_data, model_type)
         for quantity_key in combined_data:
           combined_data[quantity_key].append(extracted_data[quantity_key])
-      self.sim_summary[model_type] = {}
+      self.sim_summary[fit_type] = {}
       for quantity_key, samples in combined_data.items():
         if not samples:
-          self.sim_summary[model_type][quantity_key] = {"p16": None, "p50": None, "p84": None}
+          self.sim_summary[fit_type][quantity_key] = {"p16": None, "p50": None, "p84": None}
           continue
         flat_samples = np.concatenate(samples)
-        self.sim_summary[model_type][quantity_key] = {
+        self.sim_summary[fit_type][quantity_key] = {
           "p16": float(np.percentile(flat_samples, 16)),
           "p50": float(np.percentile(flat_samples, 50)),
           "p84": float(np.percentile(flat_samples, 84)),

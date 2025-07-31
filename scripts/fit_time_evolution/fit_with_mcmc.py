@@ -67,7 +67,7 @@ def main():
   print(f"Looking at: {data_directory}")
   print(f"Fitting the {model_name}-model to the nonlinear (backreaction) phase")
   ## read in magnetic energy evolution
-  output_directory = io_manager.combine_file_path_parts([ data_directory, model_name ])
+  output_directory = io_manager.combine_file_path_parts([ data_directory, f"{model_name}_better_binning" ])
   io_manager.init_directory(output_directory)
   data_filepath = io_manager.combine_file_path_parts([ data_directory, "dataset.json" ])
   data_dict = json_files.read_json_file_into_dict(data_filepath)
@@ -75,6 +75,7 @@ def main():
   full_time_values = numpy.array(data_dict["measured_data"]["time_values"])
   full_magnetic_energy = numpy.array(data_dict["measured_data"]["magnetic_energy_values"])
   target_Mach_number = data_dict["plasma_params"]["target_Mach"]
+  t_turb = data_dict["plasma_params"]["t_turb"]
   max_total_time = numpy.max(full_time_values)
   max_subset_time = max_total_time # initialise
   max_sat_fraction_of_subset_time = 0.35
@@ -88,7 +89,7 @@ def main():
     binned_data = compute_binned_data(
       x_values = subset_time_values,
       y_values = subset_magnetic_energy,
-      num_bins = 100
+      num_bins = int(numpy.max(subset_time_values) / t_turb)
     )
     stage1_initial_params = (
       -20, # log10(E_init)

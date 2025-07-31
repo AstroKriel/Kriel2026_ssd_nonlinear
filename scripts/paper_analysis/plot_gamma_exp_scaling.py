@@ -10,7 +10,9 @@ def extract_key_param_samples(fitted_posterior_samples):
   return gamma_samples
 
 def main():
-  mcmc_model = "linear"
+  # mcmc_model = "linear"
+  # mcmc_model = "quadratic"
+  # mcmc_model = "free"
   base_directory = Path("/scratch/jh2/nk7952/kriel2025_nl_data/").resolve()
   directories = io_manager.ItemFilter(
     include_string = ["Mach", "Re", "Pm", "Nres"]
@@ -27,7 +29,7 @@ def main():
   for directory in directories:
     sim_data_path = io_manager.combine_file_path_parts([ directory, "dataset.json" ])
     sim_data_dict = json_files.read_json_file_into_dict(sim_data_path, verbose=False)
-    fit_data_path = io_manager.combine_file_path_parts([ directory, mcmc_model, f"stage2_{mcmc_model}_fitted_posterior_samples.npy" ])
+    fit_data_path = io_manager.combine_file_path_parts([ directory, f"{mcmc_model}_better_binning", f"stage2_{mcmc_model}_fitted_posterior_samples.npy" ])
     if not io_manager.does_file_exist(fit_data_path): continue
     print(f"Loading: {directory}")
     fitted_posterior_samples = numpy.load(fit_data_path)
@@ -113,7 +115,7 @@ def main():
     label = r"$\log_{10}(\langle u^2 \rangle^{1/2} / c_s)$",
     side  = "top",
   )
-  plot_manager.save_figure(fig, f"gamma_exp_scaling_{mcmc_model}.png")
+  plot_manager.save_figure(fig, f"gamma_exp_scaling_{mcmc_model}_better_binning.png")
 
 
 if __name__ == "__main__":
