@@ -115,7 +115,7 @@ def main():
   all_directories = io_manager.ItemFilter(
     include_string = ["Mach", "Re", "Pm", "Nres"]
   ).filter(
-    sim_directory = base_directory
+    directory = base_directory
   )
   sim_suites = set([
     str(sim_directory).split("/")[-1].split("v")[0]
@@ -130,7 +130,7 @@ def main():
     ]
     sim_averager = EnsembleAverager(directories_in_suite)
     all_results[sim_suite] = sim_averager.run()
-  json_files.save_dict_to_json_file("./mcmc_sim_summary.json", all_results, overwrite=True)
+  json_files.save_dict_to_json_file("./summary_stats.json", all_results, overwrite=True)
 
 if __name__ == "__main__":
   main()
