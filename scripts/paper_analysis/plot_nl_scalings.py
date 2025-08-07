@@ -1,141 +1,183 @@
 import numpy
 from pathlib import Path
-from jormi.ww_io import io_manager, json_files
+from jormi.ww_io import json_files
 from jormi.ww_data import fit_data
 from jormi.ww_plots import plot_manager, plot_data, add_annotations, add_color
 
-MCMC_MODEL = "linear"
-# MCMC_MODEL = "quadratic"
-# MCMC_MODEL = "free"
 
-def extract_key_param_samples(fitted_posterior_samples):
-  num_params = fitted_posterior_samples.shape[1]
-  init_energy_samples    = 10**fitted_posterior_samples[:,0]
-  sat_energy_samples     = 10**fitted_posterior_samples[:,1]
-  gamma_exp_samples      = fitted_posterior_samples[:,2]
-  nl_start_time_samples  = fitted_posterior_samples[:,3]
-  sat_start_time_samples = fitted_posterior_samples[:,4]
-  if   MCMC_MODEL == "linear":    exponent_samples = 1.0
-  elif MCMC_MODEL == "quadratic": exponent_samples = 2.0
-  elif MCMC_MODEL == "free":      exponent_samples = fitted_posterior_samples[:,5]
-  else: raise ValueError("model makes no sense.")
-  nl_start_energy        = init_energy_samples * numpy.exp(gamma_exp_samples * nl_start_time_samples)
-  gamma_nl_samples = (sat_energy_samples - nl_start_energy) / (sat_start_time_samples - nl_start_time_samples)**exponent_samples
-  return gamma_nl_samples
+x_min, x_max = -1.5, 1.0
+y0_min, y0_max = -6.5, 0.0
+y1_min, y1_max = 0.0, 2.5
 
 def main():
-  base_directory = Path("/scratch/jh2/nk7952/kriel2025_nl_data/").resolve()
-  directories = io_manager.ItemFilter(
-    include_string = ["Mach", "Re", "Pm", "Nres"]
-  ).filter(
-    directory = base_directory
-  )
-  fig, ax = plot_manager.create_figure()
+  summary_path = Path("/Users/necoturb/Documents/Codes/Asgard/mimir/kriel_2025_ssd_nl/datasets/summary_stats.json")
+  all_results = json_files.read_json_file_into_dict(summary_path)
+
+  fig, axs = plot_manager.create_figure(num_rows=2)
   cmap_Re, norm_Re = add_color.create_cmap(
     cmap_name = "Blues",
     vmin      = numpy.log10(100),
     vmax      = numpy.log10(5000),
   )
-  # ax_inset = add_annotations.add_inset_axis(
-  #   ax           = ax,
-  #   bounds       = (0.075, 0.6, 0.375, 0.35),
-  #   x_label      = r"$\mathrm{Re}$",
-  #   fontsize     = 20,
-  #   x_label_side = "bottom",
-  #   y_label_side = "right",
-  # )
-  for directory in directories:
-    sim_data_path = io_manager.combine_file_path_parts([ directory, "dataset.json" ])
-    sim_data_dict = json_files.read_json_file_into_dict(sim_data_path, verbose=False)
-    fit_data_path = io_manager.combine_file_path_parts([ directory, f"{MCMC_MODEL}_better_binning", f"stage2_{MCMC_MODEL}_fitted_posterior_samples.npy" ])
-    if not io_manager.does_file_exist(fit_data_path): continue
-    print(f"Loading: {directory}")
-    fitted_posterior_samples = numpy.load(fit_data_path)
-    gamma_nl_samples = extract_key_param_samples(fitted_posterior_samples)
-    if gamma_nl_samples is None: continue
-    Mach_values = sim_data_dict["measured_data"]["rms_Mach_values"]
-    Mach_p16, Mach_p50, Mach_p84 = numpy.percentile(numpy.log10(Mach_values), [16, 50, 84])
-    Mach_err_lower = Mach_p50 - Mach_p16
-    Mach_err_upper = Mach_p84 - Mach_p50
-    Re_number = sim_data_dict["plasma_params"]["target_Re"]
-    gamma_nl_p16, gamma_nl_p50, gamma_nl_p84 = numpy.percentile(numpy.log10(gamma_nl_samples), [16, 50, 84])
-    gamma_nl_err_lower = gamma_nl_p50 - gamma_nl_p16
-    gamma_nl_err_upper = gamma_nl_p84 - gamma_nl_p50
-    Re_color = cmap_Re(norm_Re(numpy.log10(Re_number)))
-    if Re_number < 1000: continue
-    ax.errorbar(
-      Mach_p50,
-      gamma_nl_p50,
-      xerr = [
-        [Mach_err_lower],
-        [Mach_err_upper],
-      ],
-      yerr = [
-        [gamma_nl_err_lower],
-        [gamma_nl_err_upper],
-      ],
-      fmt="o", color=Re_color, mec="black", markersize=5, capsize=3, zorder=3
+
+  for sim_suite, sim_data in all_results.items():
+    gamma_nl_stats = sim_data["fit_summaries"]["linear"]["gamma_nl"]
+    if gamma_nl_stats["p50"] is None:
+      continue
+
+    log10_gamma_nl_p50 = numpy.log10(gamma_nl_stats["p50"])
+    log10_gamma_nl_err_lower = log10_gamma_nl_p50 - numpy.log10(gamma_nl_stats["p16"])
+    log10_gamma_nl_err_upper = numpy.log10(gamma_nl_stats["p84"]) - log10_gamma_nl_p50
+
+    duration_stats = sim_data["fit_summaries"]["linear"]["nl_duration"]
+    if duration_stats["p50"] is None:
+      continue
+
+    log10_delta_t_p50 = numpy.log10(duration_stats["p50"])
+    log10_delta_t_err_lower = log10_delta_t_p50 - numpy.log10(duration_stats["p16"])
+    log10_delta_t_err_upper = numpy.log10(duration_stats["p84"]) - log10_delta_t_p50
+
+    Mach_stats = sim_data["sim_params"]["Mach"]
+    log10_Mach_p50 = numpy.log10(Mach_stats["p50"])
+    log10_Mach_err_lower = log10_Mach_p50 - numpy.log10(Mach_stats["p16"])
+    log10_Mach_err_upper = numpy.log10(Mach_stats["p84"]) - log10_Mach_p50
+
+    Re_stats = sim_data["sim_params"]["Re"]
+    Re_p50 = Re_stats["p50"]
+    if Re_p50 < 1000:
+      continue
+    Re_color = cmap_Re(norm_Re(numpy.log10(Re_p50)))
+
+    if "288" in sim_suite:
+      marker, zorder = "o", 1
+    elif "576" in sim_suite:
+      marker, zorder = "s", 3
+    elif "1152" in sim_suite:
+      marker, zorder = "D", 5
+    else:
+      print("Could not determine resolution for:", sim_suite)
+      continue
+
+    axs[0].errorbar(
+      log10_Mach_p50,
+      log10_gamma_nl_p50,
+      xerr=[[log10_Mach_err_lower], [log10_Mach_err_upper]],
+      yerr=[[log10_gamma_nl_err_lower], [log10_gamma_nl_err_upper]],
+      fmt=marker, markerfacecolor=Re_color, zorder=zorder,
+      markeredgecolor="black", ecolor="black", markersize=10, lw=2, capsize=3
     )
-  ax.set_xlabel(r"$\log_{10}(\mathcal{M})$")
-  ax.set_ylabel(r"$\log_{10}(\gamma_{\rm nl})$")
-  # ax.set_xlim([-1.5, 1])
-  # ax.set_ylim([-6, -0.5])
-  ax.axvline(x=0, color="black", ls=":", lw=1.5)
+    axs[1].errorbar(
+      log10_Mach_p50,
+      log10_delta_t_p50,
+      xerr=[[log10_Mach_err_lower], [log10_Mach_err_upper]],
+      yerr=[[log10_delta_t_err_lower], [log10_delta_t_err_upper]],
+      fmt=marker, markerfacecolor=Re_color, zorder=zorder,
+      markeredgecolor="black", ecolor="black", markersize=10, lw=2, capsize=3
+    )
+
+
+  axs[0].set_xticklabels([])
+  axs[1].set_xlabel(r"$\log_{10}(\mathcal{M})$")
+  axs[0].set_ylabel(r"$\log_{10}(\gamma_{\rm nl})$")
+  axs[1].set_ylabel(r"$\log_{10}\big((t_{\rm sat} - t_{\rm nl}) / t_{\rm sc}\big)$")
+  axs[0].set_xlim([ x_min, x_max ])
+  axs[1].set_xlim([ x_min, x_max ])
+  axs[0].set_ylim([ y0_min, y0_max ])
+  axs[1].set_ylim([ y1_min, y1_max ])
+  axs[0].axvline(x=0, color="black", ls=":", lw=1.5)
+  axs[1].axvline(x=0, color="black", ls=":", lw=1.5)
+
   x_values = numpy.linspace(-2, 2, 100)
   plot_data.plot_wo_scaling_axis(
-    ax       = ax,
+    ax       = axs[0],
     x_values = x_values,
     y_values = -2 + 3 * x_values,
     ls       = "--",
     lw       = 1.5
   )
   plot_data.plot_wo_scaling_axis(
-    ax       = ax,
+    ax       = axs[1],
     x_values = x_values,
-    y_values = -2 + x_values,
-    ls       = "-",
+    y_values = 1 - x_values,
+    ls       = "--",
     lw       = 1.5
   )
-  rotation1 = fit_data.get_line_angle_in_box(
-    slope               = 3,
-    domain_bounds       = (-1.5, 1.0, -6, -0.5),
+
+  rotation_bounds0 = (x_min, x_max, y0_min, y0_max)
+  rotation0 = fit_data.get_line_angle_in_box(
+    slope = 3,
+    domain_bounds = rotation_bounds0,
     domain_aspect_ratio = 6/4,
   )
   add_annotations.add_text(
-    ax          = ax,
-    x_pos       = 0.175,
-    y_pos       = 0.325,
+    ax          = axs[0],
+    x_pos       = 0.06,
+    y_pos       = 0.175,
+    label       = r"growth regulated by energy \,flux",
+    x_alignment = "left",
+    y_alignment = "bottom",
+    rotate_deg  = rotation0
+  )
+  add_annotations.add_text(
+    ax          = axs[0],
+    x_pos       = 0.3,
+    y_pos       = 0.215,
     label       = r"$10^{-2}\, \mathcal{M}^3$",
     x_alignment = "center",
     y_alignment = "center",
-    rotate_deg  = rotation1
+    rotate_deg  = rotation0
   )
-  rotation2 = fit_data.get_line_angle_in_box(
-    slope               = 1,
-    domain_bounds       = (-1.5, 1.0, -6, -0.5),
+
+  rotation_bounds1 = (x_min, x_max, y1_min, y1_max)
+  rotation1 = fit_data.get_line_angle_in_box(
+    slope = -1,
+    domain_bounds = rotation_bounds1,
     domain_aspect_ratio = 6/4,
   )
   add_annotations.add_text(
-    ax          = ax,
-    x_pos       = 0.175,
-    y_pos       = 0.625,
-    label       = r"$10^{-2}\, \mathcal{M}$",
-    x_alignment = "center",
-    y_alignment = "center",
-    rotate_deg  = rotation2
+    ax          = axs[1],
+    x_pos       = 0.19,
+    y_pos       = 0.96,
+    label       = r"universal duration",
+    x_alignment = "left",
+    y_alignment = "top",
+    rotate_deg  = rotation1
   )
+  add_annotations.add_text(
+    ax          = axs[1],
+    x_pos       = 0.0825,
+    y_pos       = 0.725,
+    label       = r"$10 \,\mathcal{M}^{-1} \sim 10 \,t_0 / t_{\rm sc}$",
+    x_alignment = "left",
+    y_alignment = "top",
+    rotate_deg  = rotation1
+  )
+
   add_color.add_cbar_from_cmap(
-    ax    = ax,
-    cmap  = cmap_Re,
-    norm  = norm_Re,
-    label = r"$\log_{10}(\mathrm{Re})$",
-    side  = "top",
+    ax=axs[0],
+    cmap=cmap_Re,
+    norm=norm_Re,
+    label=r"$\log_{10}(\mathrm{Re})$",
+    side="top",
+    cbar_padding=0.015,
+    fontsize = 22
   )
-  plot_manager.save_figure(fig, f"gamma_nl_scaling_{MCMC_MODEL}_better_binning.png")
+  add_annotations.add_custom_legend(
+    ax           = axs[0],
+    artists      = ["o", "s", "D"],
+    labels       = [ r"$288^3$", r"$576^3$", r"$1152^3$" ],
+    colors       = ["k"] * 3,
+    marker_size  = 8,
+    line_width   = 1.5,
+    fontsize     = 16,
+    text_color   = "k",
+    position     = "upper left",
+    anchor       = (-0.035, 1.0),
+    num_cols     = 2,
+    text_padding = 0.0
+  )
+  plot_manager.save_figure(fig, f"nl_scalings.png")
 
 
 if __name__ == "__main__":
   main()
-
-
-## end
