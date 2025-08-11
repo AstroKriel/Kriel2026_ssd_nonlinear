@@ -11,6 +11,7 @@ from jormi.ww_jobs import pbs_job_manager
 ## ###############################################################
 ## HELPER FUNCTIONS
 ## ###############################################################
+
 def submit_job(data_directory, model_name, queued_job_tags):
   data_path = io_manager.combine_file_path_parts([ data_directory, "dataset.json" ])
   data_dict = json_files.read_json_file_into_dict(data_path, verbose=False)
@@ -88,6 +89,7 @@ def main():
 ## ###############################################################
 ## SCRIPT ENTRY POINT
 ## ###############################################################
+
 if __name__ == "__main__":
   main()
   sys.exit(0)
