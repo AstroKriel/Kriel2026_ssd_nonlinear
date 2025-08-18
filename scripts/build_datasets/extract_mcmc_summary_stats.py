@@ -32,6 +32,10 @@ class EnsembleAverager:
     "linear",
     "quadratic"
   ]
+  binning_types = [
+    "bin_per_t0",
+    "100bins"
+  ]
   quantity_keys = [
     "gamma_exp",
     "gamma_nl",
@@ -49,68 +53,78 @@ class EnsembleAverager:
   def run(self):
     ## for each fit-model
     for model_type in self.model_types:
+      print("Processing model-fit:", model_type)
       ## initialise quantities we want to accumulate over the different simulation instances
-      combined_data = {
-        quantity_key : []
-        for quantity_key in self.quantity_keys
-      }
+      combined_by_binning: dict[str, dict[str, list]] = {}
       ## loop over the different simulation instances
       for sim_directory in self.sim_directories:
         print("Looking at:", sim_directory)
-        ## get simulation data
+        ## load sim meta data once
         sim_data_path = io_manager.combine_file_path_parts([ sim_directory, "dataset.json" ])
+        if not io_manager.does_file_exist(sim_data_path):
+          print(f"Missing dataset.json for: {sim_directory}")
+          continue
         sim_data = json_files.read_json_file_into_dict(sim_data_path)
         target_Mach = sim_data["plasma_params"]["target_Mach"]
         target_Re = sim_data["plasma_params"]["target_Re"]
-        if target_Mach > 1:
-          _model_type = f"{model_type}_better_binning"
-        else: _model_type = model_type
-        mcmc_data_path = io_manager.combine_file_path_parts([
-          sim_directory, _model_type, f"stage2_{_model_type}_fitted_posterior_samples.npy"
-        ])
-        if not io_manager.does_file_exist(mcmc_data_path):
-          print(f"Simulation does not have mcmc data fitted with `{_model_type}` for: {sim_directory}\n")
-          continue
-        mcmc_data = numpy.load(mcmc_data_path)
-        extracted_data = extract_from_mcmc_data(mcmc_data, _model_type)
-        for quantity_key in combined_data:
-          combined_data[quantity_key].append(extracted_data[quantity_key])
-        ## only extract sim_params once (arbitrarily, from the linear fit)
-        if not self.exracted_data:
-          nu = 0.5 * target_Mach / target_Re
-          t_turb = sim_data["plasma_params"]["t_turb"]
-          full_time_values = numpy.array(sim_data["measured_data"]["time_values"])
-          full_Mach_energy = numpy.array(sim_data["measured_data"]["rms_Mach_values"])
-          median_nl_start_time = numpy.median(extracted_data["nl_start_time"])
-          start_index = list_utils.find_first_crossing(full_time_values / t_turb, 5)
-          end_index = list_utils.find_first_crossing(full_time_values, median_nl_start_time)
-          kinematic_Mach_values = full_Mach_energy[start_index : end_index]
-          kinematic_Re_values = 0.5 * kinematic_Mach_values / nu
-          self.sim_params = {
-            "Mach" : {
-              "p16": float(numpy.percentile(kinematic_Mach_values, 16)),
-              "p50": float(numpy.percentile(kinematic_Mach_values, 50)),
-              "p84": float(numpy.percentile(kinematic_Mach_values, 84))
-            },
-            "Re" : {
-              "p16": float(numpy.percentile(kinematic_Re_values, 16)),
-              "p50": float(numpy.percentile(kinematic_Re_values, 50)),
-              "p84": float(numpy.percentile(kinematic_Re_values, 84))
+        for binning_type in self.binning_types:
+          mcmc_data_path = io_manager.combine_file_path_parts([
+            sim_directory, model_type, binning_type, f"stage2_{model_type}_fitted_posterior_samples.npy"
+          ])
+          if not io_manager.does_file_exist(mcmc_data_path):
+            print(f"Simulation does not have mcmc data fitted with `{model_type}` and `{binning_type}`\n")
+            continue
+          mcmc_data = numpy.load(mcmc_data_path)
+          extracted_data = extract_from_mcmc_data(mcmc_data, model_type)
+          if binning_type not in combined_by_binning:
+            combined_by_binning[binning_type] = {
+              quantity_key: []
+              for quantity_key in self.quantity_keys
             }
-          }
-          self.exracted_data = True
-        print(" ")
+          for quantity_key in self.quantity_keys:
+            combined_by_binning[binning_type][quantity_key].append(extracted_data[quantity_key])
+          ## only extract sim_params once (arbitrarily, from the linear fit)
+          if not self.exracted_data:
+            nu = 0.5 * target_Mach / target_Re
+            t_turb = sim_data["plasma_params"]["t_turb"]
+            full_time_values = numpy.array(sim_data["measured_data"]["time_values"])
+            full_Mach_energy = numpy.array(sim_data["measured_data"]["rms_Mach_values"])
+            median_nl_start_time = numpy.median(extracted_data["nl_start_time"])
+            start_index = list_utils.find_first_crossing(full_time_values / t_turb, 5)
+            end_index = list_utils.find_first_crossing(full_time_values, median_nl_start_time)
+            kinematic_Mach_values = full_Mach_energy[start_index : end_index]
+            kinematic_Re_values = 0.5 * kinematic_Mach_values / nu
+            self.sim_params = {
+              "Mach" : {
+                "p16": float(numpy.percentile(kinematic_Mach_values, 16)),
+                "p50": float(numpy.percentile(kinematic_Mach_values, 50)),
+                "p84": float(numpy.percentile(kinematic_Mach_values, 84))
+              },
+              "Re" : {
+                "p16": float(numpy.percentile(kinematic_Re_values, 16)),
+                "p50": float(numpy.percentile(kinematic_Re_values, 50)),
+                "p84": float(numpy.percentile(kinematic_Re_values, 84))
+              }
+            }
+            self.exracted_data = True
+          print(" ")
       self.fit_summary[model_type] = {}
-      for quantity_key, samples in combined_data.items():
-        if not samples:
-          self.fit_summary[model_type][quantity_key] = {"p16": None, "p50": None, "p84": None}
-          continue
-        flat_samples = numpy.concatenate(samples)
-        self.fit_summary[model_type][quantity_key] = {
-          "p16": float(numpy.percentile(flat_samples, 16)),
-          "p50": float(numpy.percentile(flat_samples, 50)),
-          "p84": float(numpy.percentile(flat_samples, 84))
-        }
+      for binning_type, combined_data in combined_by_binning.items():
+        self.fit_summary[model_type][binning_type] = {}
+        for quantity_key, lists_of_samples in combined_data.items():
+          if not lists_of_samples:
+            self.fit_summary[model_type][binning_type][quantity_key] = {
+              "p16": None,
+              "p50": None,
+              "p84": None,
+            }
+            continue
+          flat_samples = numpy.concatenate(lists_of_samples)
+          self.fit_summary[model_type][binning_type][quantity_key] = {
+            "p16": float(numpy.percentile(flat_samples, 16)),
+            "p50": float(numpy.percentile(flat_samples, 50)),
+            "p84": float(numpy.percentile(flat_samples, 84)),
+          }
     return {
       "fit_summaries": self.fit_summary,
       "sim_params": self.sim_params
