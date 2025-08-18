@@ -10,10 +10,10 @@ from . import mcmc_utils
 
 
 ## ###############################################################
-## STAGE 2 MCMC FITTER
+## UNIFIED STAGE 2 MCMC FITTER
 ## ###############################################################
 
-class Stage2MCMCRoutine_free(base_mcmc.BaseMCMCRoutine):
+class Stage2MCMCRoutine(base_mcmc.BaseMCMCRoutine):
   def __init__(
       self,
       *,
@@ -21,36 +21,46 @@ class Stage2MCMCRoutine_free(base_mcmc.BaseMCMCRoutine):
       time_values        : list | numpy.ndarray,
       ave_energy_values  : list | numpy.ndarray,
       std_energy_values  : list | numpy.ndarray,
-      initial_params     : tuple[float, ...],
-      prior_kde          : callable = None,
+      initial_params     : tuple[float, float, float, float],
+      prior_kde          : callable | None = None,
       plot_posterior_kde : bool = True,
+      fixed_nl_exponent  : float | None = None,
+      routine_name       : str = "stage2",
     ):
+    assert len(initial_params) == 4, (
+      "Stage 2 MCMC routine expects 4 initial params: log10(E_init), log10(E_sat), gamma_exp, and t_nl"
+    )
     guess_sat_time = self._define_constraints(time_values, ave_energy_values)
+    fitted_param_labels = [
+      r"$\log_{10}(E_{\mathrm{init}})$",
+      r"$\log_{10}(E_{\mathrm{sat}})$",
+      r"$\gamma_\mathrm{exp}$",
+      r"$t_{\mathrm{nl}}$",
+      r"$t_{\mathrm{sat}}$",
+    ]
+    amended_initial_params = [
+      initial_params[0], # log10(E_init)
+      initial_params[1], # log10(E_sat)
+      initial_params[2], # exp_gamma
+      initial_params[3], # t_nl
+      guess_sat_time,    # t_sat
+    ]
+    self.fixed_nl_exponent = fixed_nl_exponent
+    if self.fixed_nl_exponent is None:
+      fitted_param_labels.append(r"$p$")
+      amended_initial_params.append(1.5) # nl_exponent
+    else: assert 1.0 <= self.fixed_nl_exponent <= 2.0, "provided `fixed_nl_exponent` should be in [1, 2]"
     super().__init__(
-      routine_name        = "stage2_free",
+      routine_name        = routine_name,
       output_directory    = output_directory,
       x_values            = time_values,
       y_values            = ave_energy_values,
       likelihood_sigma    = std_energy_values,
-      initial_params      = (
-        initial_params[0], # log10(E_init)
-        initial_params[1], # log10(E_sat)
-        initial_params[2], # exp_gamma
-        initial_params[3], # t_nl
-        guess_sat_time, # t_sat
-        1.5 # nl_exponent
-      ),
+      initial_params      = tuple(amended_initial_params),
       prior_kde           = prior_kde,
       plot_posterior_kde  = plot_posterior_kde,
       data_label          = r"$E_{\mathrm{mag}}$",
-      fitted_param_labels = [
-        r"$\log_{10}(E_{\mathrm{init}})$",
-        r"$\log_{10}(E_{\mathrm{sat}})$",
-        r"$\gamma_\mathrm{exp}$",
-        r"$t_{\mathrm{nl}}$",
-        r"$t_{\mathrm{sat}}$",
-        r"$p$"
-      ]
+      fitted_param_labels = fitted_param_labels,
     )
 
   def _define_constraints(self, time_values, ave_energy_values):
@@ -74,8 +84,14 @@ class Stage2MCMCRoutine_free(base_mcmc.BaseMCMCRoutine):
     ## output dimensions
     num_local_walkers = param_vectors.shape[0] # N
     num_data_points = len(self.x_values) # T
-    ## unpack model parameters (P = 6)
-    log10_init_energy, log10_sat_energy, exp_gamma, nl_start_time, sat_start_time, nl_exponent = param_vectors.T
+    if self.fixed_nl_exponent is None:
+      ## unpack model parameters (P = 6)
+      log10_init_energy, log10_sat_energy, exp_gamma, nl_start_time, sat_start_time, free_nl_exponent = param_vectors.T
+      nl_exponent = free_nl_exponent
+    else:
+      ## unpack model parameters (P = 5)
+      log10_init_energy, log10_sat_energy, exp_gamma, nl_start_time, sat_start_time = param_vectors.T
+      nl_exponent = self.fixed_nl_exponent * numpy.ones_like(log10_init_energy)
     ## reshape parameters to allow for vectorising over param-rows
     x_values_2d        = self.x_values[None, :] # shape (1, T)
     exp_gamma_2d       = exp_gamma[:, None] # shape (N, 1)
@@ -105,14 +121,19 @@ class Stage2MCMCRoutine_free(base_mcmc.BaseMCMCRoutine):
   def _get_valid_params_mask(self, param_vectors):
     param_vectors = numpy.atleast_2d(param_vectors)
     num_local_walkers = param_vectors.shape[0]
-    log10_init_energy, log10_sat_energy, exp_gamma, nl_start_time, sat_start_time, nl_exponent = param_vectors.T
+    if self.fixed_nl_exponent is None:
+      log10_init_energy, log10_sat_energy, exp_gamma, nl_start_time, sat_start_time, free_nl_exponent = param_vectors.T
+      nl_exponent = free_nl_exponent
+    else:
+      log10_init_energy, log10_sat_energy, exp_gamma, nl_start_time, sat_start_time = param_vectors.T
+      nl_exponent = self.fixed_nl_exponent * numpy.ones_like(log10_init_energy)
     valid_log10_init_energy = (-30 < log10_init_energy) & (log10_init_energy < -5)
     valid_log10_sat_energy  = (-5 < log10_sat_energy) & (log10_sat_energy < 0)
     valid_exp_gamma         = (0 < exp_gamma) & (exp_gamma < 10)
     valid_nl_start_time     = (nl_start_time < self.max_nl_time) & (nl_start_time < sat_start_time)
     valid_sat_start_time    = sat_start_time < self.max_sat_time
-    valid_nl_exponent       = (1.0 < nl_exponent) & (nl_exponent < 2.0)
-    valid_params_mask = (
+    valid_nl_exponent       = (1.0 <= nl_exponent) & (nl_exponent <= 2.0)
+    valid_params_mask       = (
       valid_log10_init_energy &
       valid_log10_sat_energy &
       valid_exp_gamma &
@@ -125,6 +146,7 @@ class Stage2MCMCRoutine_free(base_mcmc.BaseMCMCRoutine):
     return valid_params_mask
 
   def _get_kde_params(self, param_vectors):
+    param_vectors = numpy.atleast_2d(param_vectors)
     ## ignore the transition times implicity gives them a unifrom prior
     return numpy.asarray(param_vectors[:, :3])
 
@@ -138,6 +160,23 @@ class Stage2MCMCRoutine_free(base_mcmc.BaseMCMCRoutine):
       mcmc_utils.plot_param_percentiles(axs[row_index], sat_start_time_samples, orientation="vertical")
       axs[row_index].axvline(self.max_nl_time, color="red", ls="--")
       axs[row_index].axvline(self.max_sat_time, color="red", ls="--")
+
+
+## ###############################################################
+## THIN WRAPPERS EXPOSING MODEL VARIANTS
+## ###############################################################
+
+class Stage2MCMCRoutine_free(Stage2MCMCRoutine):
+  def __init__(self, **kwargs):
+    super().__init__(fixed_nl_exponent=None, routine_name="stage2_free", **kwargs)
+
+class Stage2MCMCRoutine_linear(Stage2MCMCRoutine):
+  def __init__(self, **kwargs):
+    super().__init__(fixed_nl_exponent=1.0, routine_name="stage2_linear", **kwargs)
+
+class Stage2MCMCRoutine_quadratic(Stage2MCMCRoutine):
+  def __init__(self, **kwargs):
+    super().__init__(fixed_nl_exponent=2.0, routine_name="stage2_quadratic", **kwargs)
 
 
 ## END OF MODULE
