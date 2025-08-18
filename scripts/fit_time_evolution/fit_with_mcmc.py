@@ -7,9 +7,9 @@ import argparse
 from pathlib import Path
 from jormi.ww_io import io_manager, json_files
 from my_mcmc_fitting_routine.mcmc_stage_1 import Stage1MCMCRoutine
-from my_mcmc_fitting_routine.mcmc_stage_2_free import Stage2MCMCRoutine_free
-from my_mcmc_fitting_routine.mcmc_stage_2_linear import Stage2MCMCRoutine_linear
-from my_mcmc_fitting_routine.mcmc_stage_2_quadratic import Stage2MCMCRoutine_quadratic
+from my_mcmc_fitting_routine.mcmc_stage_2 import Stage2MCMCRoutine_free
+from my_mcmc_fitting_routine.mcmc_stage_2 import Stage2MCMCRoutine_linear
+from my_mcmc_fitting_routine.mcmc_stage_2 import Stage2MCMCRoutine_quadratic
 from my_mcmc_fitting_routine.plot_final_fits import PlotFinalFits
 
 
