@@ -2,74 +2,14 @@
 ## DEPENDANCIES
 ## ###############################################################
 
-import re
 import sys
 import numpy
 from pathlib import Path
 from collections import defaultdict
-from jormi.utils import list_utils
+from matplotlib.colors import LinearSegmentedColormap
 from jormi.ww_io import io_manager, json_files
 from jormi.ww_data import interpolate_data
 from jormi.ww_plots import plot_manager, add_color, add_annotations
-from ww_flash_sims.sim_io import read_vi_data
-
-
-## ###############################################################
-## HELPER FUNCTIONS
-## ###############################################################
-
-def extract_sim_params(sim_directory: str | Path):
-  sim_directory = str(sim_directory)
-  match_plasma_pattern = re.search(r"Re(\d+)/Mach([\d.]+)/Pm(\d+)", sim_directory)
-  if not match_plasma_pattern: raise ValueError(f"Could not extract plasma parameters from path: {sim_directory}")
-  Mach_number = float(match_plasma_pattern.group(2))
-  Re_number   = int(match_plasma_pattern.group(1))
-  Pm_number   = int(match_plasma_pattern.group(3))
-  match_sim_pattern = re.search(r"/(\d+)(?:v(\d+))?/?$", sim_directory)
-  if not match_sim_pattern: raise ValueError(f"Could not extract resolution from path: {sim_directory}")
-  Nres_number    = int(match_sim_pattern.group(1))
-  version_number = int(match_sim_pattern.group(2)) if match_sim_pattern.group(2) else 1
-  return Mach_number, Re_number, Pm_number, Nres_number, version_number
-
-def load_data(sim_directory: str | Path):
-  Mach_number, Re_number, Pm_number, Nres_number, version_number = extract_sim_params(sim_directory)
-  sim_name = f"Mach{Mach_number}Re{Re_number}Pm{Pm_number}"
-  time_values, magnetic_energy_values = read_vi_data.read_vi_data(
-    directory    = sim_directory,
-    dataset_name = "mag"
-  )
-  _, kinetic_energy_values = read_vi_data.read_vi_data(
-    directory    = sim_directory,
-    dataset_name = "kin"
-  )
-  _, Mach_values  = read_vi_data.read_vi_data(
-    directory    = sim_directory,
-    dataset_name = "Mach"
-  )
-  # energy_ratio_values = numpy.array(magnetic_energy_values) / numpy.array(kinetic_energy_values)
-  energy_ratio_values = numpy.array(magnetic_energy_values) #/ numpy.mean(magnetic_energy_values[len(time_values)//2 : 3*len(time_values)//4])
-  start_index = list_utils.get_index_of_closest_value(
-    values = numpy.log10(energy_ratio_values),
-    target = -10,
-  )
-  return {
-    "sim_name" : sim_name,
-    "sim_directory" : str(sim_directory),
-    "plasma_params" : {
-      "t_turb" : 0.5 / Mach_number, # ell_turb / u_turb
-      "Mach" : Mach_number,
-      "Re" : Re_number,
-      "Pm" : Pm_number,
-    },
-    "raw_data" : {
-      "time" : numpy.array(time_values[start_index:]) - time_values[start_index],
-      "Mach_values" : Mach_values[start_index:],
-      "kinetic_energy" : kinetic_energy_values[start_index:],
-      "magnetic_energy" : magnetic_energy_values[start_index:],
-      "energy_ratio" : energy_ratio_values[start_index:],
-      # "energy_ratio" : energy_ratio_values[start_index:],
-    }
-  }
 
 
 ## ###############################################################
@@ -77,132 +17,167 @@ def load_data(sim_directory: str | Path):
 ## ###############################################################
 
 def main():
-  base_output_directory = io_manager.combine_file_path_parts(["/scratch/jh2/nk7952/kriel2025_nl_data"])
-  io_manager.init_directory(base_output_directory, verbose=False)
-
-  Re_varied_directories = sorted(Path("/scratch/").glob("*/nk7952/Re*/Mach0.5/Pm1/576"))
-  Mach_varied_directories = sorted(Path("/scratch/").glob("*/nk7952/Re1500/Mach*/Pm1/*"))
-  Mach_varied_directories = [
-    sim_directory
-    for sim_directory in Mach_varied_directories
-    if io_manager.does_file_exist(
-      directory   = sim_directory,
-      file_name   = "Turb.dat",
-      raise_error = False
-    ) and (
-      any(
-        sim_nres in str(sim_directory)
-        for sim_nres in ["288", "576", "1152"]
-      )
-      and
-      "anti" not in str(sim_directory)
-    )
-  ]
+  num_points = 10**3
+  summary_path = Path("/Users/necoturb/Documents/Codes/Asgard/mimir/kriel_2025_ssd_nl/datasets_v2/summary_stats.json")
+  all_results = json_files.read_json_file_into_dict(summary_path)
 
   fig, axs = plot_manager.create_figure(num_rows=2, share_x=True)
   ax_inset = add_annotations.add_inset_axis(
     ax           = axs[0],
-    bounds       = (0.45, 0.065, 0.525, 0.5),
+    bounds       = (0.46, 0.065, 0.475, 0.5),
     x_label_side = "top",
     y_label_side = "left",
   )
+
+  custom_cmap = LinearSegmentedColormap.from_list(
+    name   = "white-brown",
+    colors = ["#024f92", "#067bf1", "#ffffff", "#f65d25", "#A41409"],
+    N      = 256
+  )
   cmap_Mach, norm_Mach = add_color.create_cmap(
-    cmap_name="cmr.watermelon",
-    vmin=numpy.log10(0.1), vmid=0, vmax=numpy.log10(5)
+    cmap_name = custom_cmap,
+    vmin = -1.0,
+    vmid = 0,
+    vmax = 1.0,
+    cmin = 0.1,
+    cmax = 0.9,
   )
-  cmap_Re, norm_Re = add_color.create_cmap(
-    cmap_name = "Blues",
-    vmin      = numpy.log10(100),
-    vmax      = numpy.log10(5000),
+  
+  sim_paths_Nres576 = io_manager.ItemFilter(
+    include_string = ["Mach", "Re1500", "Pm1", "Nres576"]
+  ).filter(
+    directory = "/Users/necoturb/Documents/Codes/Asgard/mimir/kriel_2025_ssd_nl/datasets_v2/"
   )
 
-  Mach_varied_data = defaultdict(list)
-  scaled_Mach_varied_data = defaultdict(list)
-  for sim_directory in Mach_varied_directories:
-    data_dict = load_data(sim_directory)
-    sim_name = data_dict["sim_name"]
-    t_turb = data_dict["plasma_params"]["t_turb"]
-    time_vals = data_dict["raw_data"]["time"]
-    energy_ratio = data_dict["raw_data"]["energy_ratio"]
-    Mach_varied_data[sim_name].append((
-      time_vals,
-      energy_ratio,
-      data_dict["plasma_params"]["Mach"]
-    ))
-    scaled_Mach_varied_data[sim_name].append((
-      time_vals / t_turb,
-      energy_ratio,
-      data_dict["plasma_params"]["Mach"]
-    ))
-  for sim_name, simulations in Mach_varied_data.items():
-    t_min = max(sim[0][0] for sim in simulations)
-    t_max = min(sim[0][-1] for sim in simulations)
-    t_common = numpy.linspace(t_min, t_max, 500)
-    energy_matrix = []
-    for t, energy, _ in simulations:
-      t_common, interp = interpolate_data.interpolate_1d(
-        x_values = t,
-        y_values = energy,
-        x_interp = t_common,
-        kind     = "linear",
-      )
-      energy_matrix.append(interp)
-    energy_matrix = numpy.array(energy_matrix)
-    median_vals = numpy.median(energy_matrix, axis=0)
-    low_vals = numpy.percentile(energy_matrix, 25, axis=0)
-    high_vals = numpy.percentile(energy_matrix, 75, axis=0)
-    Mach_number = simulations[0][2]
-    color = cmap_Mach(norm_Mach(numpy.log10(Mach_number)))
-    axs[0].plot(t_common, numpy.log10(median_vals), color=color, lw=2)
-    axs[0].fill_between(t_common, numpy.log10(low_vals), numpy.log10(high_vals), color=color, alpha=0.5)
-    axs[1].plot(t_common, median_vals, color=color, lw=2)
-    axs[1].fill_between(t_common, low_vals, high_vals, color=color, alpha=0.5)
-  for sim_name, simulations in scaled_Mach_varied_data.items():
-    t_min = max(sim[0][0] for sim in simulations)
-    t_max = min(sim[0][-1] for sim in simulations)
-    t_common = numpy.linspace(t_min, t_max, 500)
-    energy_matrix = []
-    for t, energy, _ in simulations:
-      t_common, interp = interpolate_data.interpolate_1d(
-        x_values = t,
-        y_values = energy,
-        x_interp = t_common,
-        kind     = "linear",
-      )
-      energy_matrix.append(interp)
-    energy_matrix = numpy.array(energy_matrix)
-    median_vals = numpy.median(energy_matrix, axis=0)
-    low_vals = numpy.percentile(energy_matrix, 25, axis=0)
-    high_vals = numpy.percentile(energy_matrix, 75, axis=0)
-    Mach_number = simulations[0][2]
-    color = cmap_Mach(norm_Mach(numpy.log10(Mach_number)))
-    ax_inset.plot(t_common, numpy.log10(median_vals), color=color, lw=2)
-    ax_inset.fill_between(t_common, numpy.log10(low_vals), numpy.log10(high_vals), color=color, alpha=0.5)
+  sim_paths_Nres1152 = io_manager.ItemFilter(
+    include_string = ["Mach", "Re1500", "Pm1", "Nres1152"]
+  ).filter(
+    directory = "/Users/necoturb/Documents/Codes/Asgard/mimir/kriel_2025_ssd_nl/datasets_v2/"
+  )
 
-  axs[0].axhline(y=0, ls=":", color="black")
-  axs[1].axhline(y=1, ls=":", color="black")
+  sim_paths = [
+    sim_path
+    for sim_path in sim_paths_Nres576
+    if not any(
+      Mach_str in str(sim_path)
+      for Mach_str in ["Mach0.3", "Mach0.5", "Mach0.8"]
+    )
+  ]
+  sim_paths.extend([
+    sim_path
+    for sim_path in sim_paths_Nres1152
+  ])
+
+  sim_collections = defaultdict(list)
+  for sim_path in sim_paths:
+    data_filepath = io_manager.combine_file_path_parts([ sim_path, "dataset.json" ])
+    if not io_manager.does_file_exist(data_filepath):
+      print(f"Missing dataset.json for: {sim_path}")
+      continue
+    if "Mach0.8" in str(sim_path): continue
+    sim_instance = json_files.read_json_file_into_dict(data_filepath)
+    sim_name     = sim_instance["sim_name"].split("v")[0]
+    t_turb       = sim_instance["plasma_params"]["t_turb"]
+    target_Mach  = sim_instance["plasma_params"]["target_Mach"]
+    if target_Mach < 0.1: continue
+    time_values  = numpy.array(sim_instance["measured_data"]["time_values"])
+    Emag_values  = numpy.array(sim_instance["measured_data"]["magnetic_energy_values"])
+    sim_collections[sim_name].append((
+      t_turb,
+      target_Mach,
+      time_values,
+      Emag_values,
+    ))
+
+  for sim_name, sim_instances in sim_collections.items():
+    Emag_sat = all_results[sim_name]["fit_summaries"]["free"]["bin_per_t0"]["sat_energy"]["p50"]
+    biggest_t_min  = numpy.max([
+      numpy.min(sim_data[2])
+      for sim_data in sim_instances
+    ])
+    smallest_t_max = numpy.min([
+      numpy.max(sim_data[2])
+      for sim_data in sim_instances
+    ])
+    interp_time_values = numpy.linspace(biggest_t_min, smallest_t_max, num_points)
+    Emag_matrix = []
+    for sim_instance in sim_instances:
+      interp_time_values, interp_Emag_values = interpolate_data.interpolate_1d(
+        x_values = sim_instance[2],
+        y_values = sim_instance[3] / Emag_sat,
+        x_interp = interp_time_values,
+        kind     = "linear",
+      )
+      Emag_matrix.append(interp_Emag_values)
+    Emag_matrix = numpy.array(Emag_matrix)
+    Emag_p16_vals = numpy.percentile(Emag_matrix, 16, axis=0)
+    Emag_p50_vals = numpy.percentile(Emag_matrix, 50, axis=0)
+    Emag_p84_vals = numpy.percentile(Emag_matrix, 84, axis=0)
+    t_turb = sim_instances[0][0]
+    target_Mach = sim_instances[0][1]
+    color = cmap_Mach(norm_Mach(numpy.log10(target_Mach)))
+    axs[0].plot(
+      interp_time_values,
+      numpy.log10(Emag_p50_vals),
+      color=color, markeredgewidth=0.2, zorder=target_Mach
+    )
+    axs[0].fill_between(
+      interp_time_values,
+      numpy.log10(Emag_p16_vals),
+      numpy.log10(Emag_p84_vals),
+      color=color, alpha=0.5, zorder=target_Mach
+    )
+    axs[1].plot(
+      interp_time_values,
+      Emag_p50_vals,
+      color=color, markeredgewidth=0.2, zorder=target_Mach
+    )
+    axs[1].fill_between(
+      interp_time_values,
+      Emag_p16_vals,
+      Emag_p84_vals,
+      color=color, alpha=0.5, zorder=target_Mach
+    )
+    ax_inset.plot(
+      interp_time_values / t_turb,
+      Emag_p50_vals,
+      color=color, zorder=1/target_Mach
+    )
+    ax_inset.fill_between(
+      interp_time_values / t_turb,
+      Emag_p16_vals,
+      Emag_p84_vals,
+      color=color, alpha=0.5, zorder=1/target_Mach
+    )
+  
+  axs[0].axhline(y=0, ls=":", color="black", zorder=100)
+  axs[1].axhline(y=1, ls=":", color="black", zorder=100)
   axs[0].set_ylabel(r"$\log_{10}(\mathrm{E_\mathrm{mag}} / \mathrm{E_\mathrm{mag, sat}})$")
   axs[1].set_ylabel(r"$E_\mathrm{mag} / \mathrm{E_\mathrm{mag, sat}}$")
-  axs[1].set_xlabel(r"$t$")
+  axs[1].set_xlabel(r"$t / t_\mathrm{sc}$")
   axs[0].set_xlim([0, 400])
   axs[1].set_xlim([0, 400])
   axs[0].set_ylim([-10.5, 1])
   axs[1].set_ylim([-0.025, 1.5])
 
-  ax_inset.axhline(y=0, ls=":", color="black")
+  ax_inset.set_xlim([0, 200])
+  ax_inset.set_ylim([0, 2])
+  ax_inset.axhline(y=1, ls=":", color="black", zorder=100)
   ax_inset.set_ylabel(r"$E_\mathrm{mag} / \mathrm{E_\mathrm{mag, sat}}$")
-  ax_inset.set_xlabel(r"$t / t_0$")
+  ax_inset.set_xlabel(r"$t / t_0$", labelpad=8)
 
   add_color.add_cbar_from_cmap(
-    ax    = axs[0],
-    cmap  = cmap_Mach,
-    norm  = norm_Mach,
-    label = r"$\log_{10}(\mathcal{M})$",
-    side  = "top",
-    cbar_padding = 1e-2
+    ax           = axs[0],
+    cmap         = cmap_Mach,
+    norm         = norm_Mach,
+    label        = r"$\log_{10}(\mathcal{M})$",
+    side         = "top",
+    cbar_padding = 1e-2,
+    fontsize     = 24,
   )
-
-  plot_manager.save_figure(fig, "time_evolution.png")
+  script_dir = Path(__file__).parent
+  plot_path = script_dir / "time_evolution.pdf"
+  plot_manager.save_figure(fig, plot_path)
 
 
 ## ###############################################################
@@ -214,4 +189,4 @@ if __name__ == "__main__":
   sys.exit(0)
 
 
-## END OF SCRIPT
+## .
