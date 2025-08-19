@@ -82,7 +82,6 @@ def main():
   ## subset the simulation domain: roughly half of the data points should make up the growth phase
   full_time_values = numpy.array(data_dict["measured_data"]["time_values"])
   full_magnetic_energy = numpy.array(data_dict["measured_data"]["magnetic_energy_values"])
-  target_Mach_number = data_dict["plasma_params"]["target_Mach"]
   t_turb = data_dict["plasma_params"]["t_turb"]
   max_total_time = numpy.max(full_time_values)
   max_subset_time = max_total_time # initialise
