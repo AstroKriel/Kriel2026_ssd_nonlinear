@@ -54,6 +54,7 @@ class EnsembleAverager:
     ## for each fit-model
     for model_type in self.model_types:
       print("Processing model-fit:", model_type)
+      print(" ")
       ## initialise quantities we want to accumulate over the different simulation instances
       combined_by_binning: dict[str, dict[str, list]] = {}
       ## loop over the different simulation instances
@@ -131,6 +132,8 @@ class EnsembleAverager:
     }
 
 def main():
+  script_dir = Path(__file__).parent
+  output_summary_path = script_dir / "summary_stats.json"
   base_directory = Path("/scratch/jh2/nk7952/ssd_sims").resolve()
   all_directories = io_manager.ItemFilter(
     include_string = ["Mach", "Re", "Pm", "Nres"]
@@ -151,7 +154,7 @@ def main():
     ## average over the different simulation instances (at a particular resolution)
     sim_averager = EnsembleAverager(directories_in_suite)
     all_results[sim_suite] = sim_averager.run()
-  json_files.save_dict_to_json_file("./summary_stats.json", all_results, overwrite=True)
+  json_files.save_dict_to_json_file(output_summary_path, all_results, overwrite=True)
 
 if __name__ == "__main__":
   main()
