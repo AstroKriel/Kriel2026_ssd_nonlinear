@@ -13,7 +13,7 @@ MODEL_TYPE = "free"
 BINNING_TYPE = "bin_per_t0"
 
 x_min, x_max = 3.05, 3.75
-y_min, y_max = -0.4, 0.5
+y_min, y_max = -0.4, 0.45
 
 def format_fit_label(
     intercept_best : float,
@@ -149,7 +149,7 @@ def main():
   add_annotations.add_text(
     ax          = ax,
     x_pos       = 0.585,
-    y_pos       = 0.635,
+    y_pos       = 0.665,
     label       = subsonic_label + r"$\, \mathrm{Re}^{1/2}$",
     x_alignment = "center",
     y_alignment = "center",
@@ -184,7 +184,7 @@ def main():
   )
   add_annotations.add_text(
     ax          = ax,
-    x_pos       = 0.635,
+    x_pos       = 0.665,
     y_pos       = 0.15,
     label       = supersonic_label + r"$\, \mathrm{Re}^{1/3}$",
     x_alignment = "center",
@@ -208,8 +208,16 @@ def main():
   )
   add_annotations.add_custom_legend(
     ax           = ax,
-    artists      = ["o", "s", "D"],
-    labels       = [ r"$288^3$", r"$576^3$", r"$1152^3$" ],
+    artists      = [
+      "o",
+      "D",
+      "s",
+    ],
+    labels       = [
+      r"$288^3$",
+      r"$1152^3$",
+      r"$576^3$",
+    ],
     colors       = ["k"] * 3,
     marker_size  = 8,
     line_width   = 1.5,
@@ -217,7 +225,7 @@ def main():
     text_color   = "k",
     position     = "upper left",
     anchor       = (-0.035, 1.0),
-    num_cols     = 3,
+    num_cols     = 2,
     text_padding = 0.0,
   )
   script_dir = Path(__file__).parent
