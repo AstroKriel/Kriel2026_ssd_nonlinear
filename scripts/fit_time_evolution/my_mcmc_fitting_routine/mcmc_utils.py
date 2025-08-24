@@ -11,7 +11,7 @@ import numpy
 
 def plot_param_percentiles(ax, samples, orientation):
   p16, p50, p84 = numpy.percentile(samples, [16, 50, 84])
-  if   "h" in orientation.lower():
+  if "h" in orientation.lower():
     ax_line = ax.axhline
     ax_span = ax.axhspan
   elif "v" in orientation.lower():

@@ -39,7 +39,7 @@ class Stage2MCMCRoutine(base_mcmc.BaseMCMCRoutine):
       r"$t_{\mathrm{nl}}$",
       r"$t_{\mathrm{sat}}$",
     ]
-    amended_initial_params = [
+    all_initial_params = [
       initial_params[0], # log10(E_init)
       initial_params[1], # log10(E_sat)
       initial_params[2], # exp_gamma
@@ -49,16 +49,15 @@ class Stage2MCMCRoutine(base_mcmc.BaseMCMCRoutine):
     self.fixed_nl_exponent = fixed_nl_exponent
     if self.fixed_nl_exponent is None:
       fitted_param_labels.append(r"$p$")
-      amended_initial_params.append(1.5) # nl_exponent
+      all_initial_params.append(1.5) # nl_exponent
     else: assert 1.0 <= self.fixed_nl_exponent <= 2.0, "provided `fixed_nl_exponent` should be in [1, 2]"
-    print(amended_initial_params)
     super().__init__(
       routine_name        = routine_name,
       output_directory    = output_directory,
       x_values            = time_values,
       y_values            = ave_energy_values,
       likelihood_sigma    = std_energy_values,
-      initial_params      = tuple(amended_initial_params),
+      initial_params      = tuple(all_initial_params),
       prior_kde           = prior_kde,
       plot_posterior_kde  = plot_posterior_kde,
       data_label          = r"$E_{\mathrm{mag}}$",
