@@ -101,7 +101,7 @@ def main():
     log10_Mach_err_lower = log10_Mach_p50 - numpy.log10(Mach_stats["p16"])
     log10_Mach_err_upper = numpy.log10(Mach_stats["p84"]) - log10_Mach_p50
 
-    t_turb = 1 / Mach_stats["p50"] # ell_turb / u_turb
+    t_turb = 0.5 / Mach_stats["p50"] # ell_turb / u_turb
 
     Re_stats = sim_data["sim_params"]["Re"]
     Re_p50 = Re_stats["p50"]
@@ -124,9 +124,10 @@ def main():
     log10_Mach_jiggle     = 0.05 * random.uniform(-1, 1),
     log10_gamma_nl_jiggle = 0.05 * random.uniform(-1, 1)
     log10_delta_t_jiggle  = 0.05 * random.uniform(-1, 1)
+    x = log10_Mach_p50 + log10_Mach_jiggle
+    y1 = log10_gamma_nl_p50 + log10_gamma_nl_jiggle
     axs[0].errorbar(
-      log10_Mach_p50 + log10_Mach_jiggle,
-      log10_gamma_nl_p50 + log10_gamma_nl_jiggle,
+      x, y1,
       xerr = [
         [log10_Mach_err_lower],
         [log10_Mach_err_upper]
@@ -138,9 +139,9 @@ def main():
       fmt=marker, markerfacecolor=Re_color, zorder=zorder,
       markeredgecolor="black", ecolor="black", markersize=10, lw=2, capsize=3,
     )
+    y2 = log10_delta_t_p50 + log10_delta_t_jiggle - numpy.log10(t_turb)
     axs[1].errorbar(
-      log10_Mach_p50 + log10_Mach_jiggle,
-      (log10_delta_t_p50 + log10_delta_t_jiggle) - numpy.log10(t_turb),
+      x, y2,
       xerr = [
         [log10_Mach_err_lower],
         [log10_Mach_err_upper]
@@ -153,9 +154,9 @@ def main():
       markeredgecolor="black", ecolor="black", markersize=10, lw=2, capsize=3,
     )
     coords_to_fit.append((
-      numpy.float64(log10_Mach_p50 + log10_Mach_jiggle),
-      numpy.float64(log10_gamma_nl_p50 + log10_gamma_nl_jiggle),
-      numpy.float64(log10_delta_t_p50 + log10_delta_t_jiggle),
+      numpy.float64(x),
+      numpy.float64(y1),
+      y2,
       numpy.float64(log10_delta_t_err_lower),
     ))
 
@@ -218,7 +219,7 @@ def main():
     x_values = [coord[0] for coord in coords_to_fit],
     y_values = [coord[2] for coord in coords_to_fit],
     y_sigmas = [coord[3] for coord in coords_to_fit],
-    slope    = -1,
+    slope    = 0,
   )
   duration_a1_ave = duration_fit_results["intercept"]["best"]
   duration_a1_std = duration_fit_results["intercept"]["std"]
@@ -230,8 +231,8 @@ def main():
   )
   add_annotations.add_text(
     ax          = axs[1],
-    x_pos       = 0.05,
-    y_pos       = 0.65,
+    x_pos       = 0.035,
+    y_pos       = 0.375,
     label       = duration_label + r"$\, t_0 / t_\mathrm{sc}$",
     fontsize    = 20,
     x_alignment = "left",
@@ -242,7 +243,7 @@ def main():
   plot_data.plot_wo_scaling_axis(
     ax       = axs[0],
     x_values = x_values,
-    y_values = numpy.log10(3/38) + 3 * x_values, # xu and lazarian
+    y_values = numpy.log10(3/38 * 2) + 3 * x_values, # xu and lazarian
     color    = model_colour,
     ls       = "--",
     lw       = 1.75,
@@ -252,7 +253,7 @@ def main():
   plot_data.plot_wo_scaling_axis(
     ax       = axs[0],
     x_values = x_values,
-    y_values = numpy.log10(0.05) + 3 * x_values, # beresnyak
+    y_values = numpy.log10(0.05 * 2) + 3 * x_values, # beresnyak
     color    = model_colour,
     ls       = "-",
     lw       = 1.75,
@@ -260,54 +261,58 @@ def main():
     zorder   = 1
   )
   add_annotations.add_custom_legend(
-    ax           = axs[0],
-    artists      = [
-      "-",
+    ax = axs[0],
+    artists = [
       "--",
+      "-",
     ],
-    colors       = [
+    colors = [
       "black",
       "black",
     ],
-    labels       = [
-      subsonic_label + r"$\, \mathcal{M}^3$",
+    labels = [
       supersonic_label,
+      subsonic_label + r"$\, \mathcal{M}^3$",
     ],
     marker_size   = 8,
     line_width    = 1.5,
     fontsize      = 16,
     text_color    = "k",
-    position      = "upper left",
-    anchor        = (-0.02, 0.99),
+    position      = "lower right",
+    anchor        = (1.0, 0.025),
     num_cols      = 1,
     text_padding  = 0.5,
     label_spacing = 0.625,
+    enable_frame  = True,
+    face_color    = "white",
+    edge_color    = "white",
+    frame_alpha   = 0.75,
   )
   add_annotations.add_custom_legend(
-    ax           = axs[0],
-    artists      = [
+    ax = axs[0],
+    artists = [
       "--",
       "-",
     ],
-    colors       = [
+    colors = [
       model_colour,
       model_colour,
     ],
-    labels       = [
-      r"$(3/38) \, \mathcal{M}^3$",
-      r"$0.05 \, \mathcal{M}^3$",
+    labels = [
+      r"$(3/38) \, \mathcal{M}^3 / \ell_0$",
+      r"$0.05 \, \mathcal{M}^3 / \ell_0$",
     ],
     marker_size  = 8,
     line_width   = 1.5,
     fontsize     = 16,
     text_color   = "k",
-    position     = "lower right",
-    anchor       = (1.015, 0.025),
+    position     = "upper left",
+    anchor       = (0.0, 0.99),
     num_cols     = 1,
     text_padding = 0.5,
   )
-  guide_x0 = -0.55
-  guide_y0 = -5.5
+  guide_x0 = 0.25
+  guide_y0 = -3.75
   guide_length = 0.5
   guide_x_y6, guide_y_y6 = generate_line(
     x_start             = guide_x0,
@@ -329,8 +334,8 @@ def main():
   )
   add_annotations.add_text(
     ax          = axs[0],
-    x_pos       = 0.5,
-    y_pos       = 0.25,
+    x_pos       = 0.815,
+    y_pos       = 0.535,
     label       = r"$\mathcal{M}^{6}$",
     x_alignment = "center",
     y_alignment = "center",
