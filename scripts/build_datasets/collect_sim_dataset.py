@@ -121,8 +121,7 @@ def main():
     io_manager.init_directory(base_output_directory, verbose=False)
     ## find matching simulation directories under /scratch/
     sim_directories = [
-        sim_directory
-        for sim_directory in sorted(Path("/scratch/").glob("*/nk7952/R*/Mach*/Pm*/*"))
+        sim_directory for sim_directory in sorted(Path("/scratch/").glob("*/nk7952/R*/Mach*/Pm*/*"))
         if io_manager.does_file_exist(
             directory=sim_directory,
             file_name="Turb.dat",
@@ -138,9 +137,7 @@ def main():
     ## process each simulation
     for sim_directory in sim_directories:
         dataset = load_data(sim_directory)
-        sim_output_directory = io_manager.combine_file_path_parts(
-            [base_output_directory, dataset["sim_name"]],
-        )
+        sim_output_directory = io_manager.combine_file_path_parts([base_output_directory, dataset["sim_name"]], )
         plot_and_save_data(dataset, sim_output_directory)
         print(" ")
 

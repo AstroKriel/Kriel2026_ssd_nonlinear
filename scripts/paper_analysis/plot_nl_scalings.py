@@ -6,7 +6,7 @@ from pathlib import Path
 from matplotlib.colors import LinearSegmentedColormap
 from jormi.ww_io import json_files
 from jormi.ww_data import fit_data
-from jormi.ww_plots import plot_manager, plot_data, add_annotations, add_color
+from jormi.ww_plots import plot_manager, plot_styler, annotate_axis, add_color
 
 MODEL_TYPE = "linear"
 # MODEL_TYPE = "quadratic"
@@ -32,6 +32,8 @@ def format_fit_label(
     significand_std = coefficient_std / (10**exponent)
     if exponent == 0:
         label = rf"$({significand:.{decimals}f} \pm {significand_std:.{decimals}f})$"
+    elif exponent == 1:
+        label = rf"$({significand:.{decimals}f} \pm {significand_std:.{decimals}f}) \!\times 10$"
     else:
         label = rf"$({significand:.{decimals}f} \pm {significand_std:.{decimals}f}) \!\times 10^{{{exponent}}}$"
     return label
@@ -68,6 +70,7 @@ def main():
     )
     all_results = json_files.read_json_file_into_dict(summary_path)
 
+    plot_styler.apply_theme_globally()
     fig, axs = plot_manager.create_figure(num_rows=2)
 
     custom_cmap = LinearSegmentedColormap.from_list(
@@ -151,7 +154,7 @@ def main():
             markeredgecolor="black",
             ecolor="black",
             markersize=10,
-            lw=2,
+            linewidth=2,
             capsize=3,
         )
         y2 = log10_delta_t_p50 + log10_delta_t_jiggle - numpy.log10(t_turb)
@@ -172,17 +175,15 @@ def main():
             markeredgecolor="black",
             ecolor="black",
             markersize=10,
-            lw=2,
+            linewidth=2,
             capsize=3,
         )
-        coords_to_fit.append(
-            (
-                numpy.float64(x),
-                numpy.float64(y1),
-                y2,
-                numpy.float64(log10_delta_t_err_lower),
-            ),
-        )
+        coords_to_fit.append((
+            numpy.float64(x),
+            numpy.float64(y1),
+            y2,
+            numpy.float64(log10_delta_t_err_lower),
+        ), )
 
     axs[0].set_xticklabels([])
     axs[1].set_xlabel(r"$\log_{10}(\mathcal{M})$")
@@ -192,8 +193,8 @@ def main():
     axs[1].set_xlim([x_min, x_max])
     axs[0].set_ylim([y0_min, y0_max])
     axs[1].set_ylim([y1_min, y1_max])
-    axs[0].axvline(x=0, color="black", ls=":", lw=1.5)
-    axs[1].axvline(x=0, color="black", ls=":", lw=1.5)
+    axs[0].axvline(x=0, color="black", linestyle=":", linewidth=1.5)
+    axs[1].axvline(x=0, color="black", linestyle=":", linewidth=1.5)
 
     x_values = numpy.linspace(-2, 2, 100)
     ax0_bounds = (x_min, x_max, y0_min, y0_max)
@@ -211,12 +212,12 @@ def main():
         intercept_std=subsonic_a1_std,
         decimals=1,
     )
-    plot_data.plot_wo_scaling_axis(
+    annotate_axis.overlay_curve(
         ax=axs[0],
         x_values=x_values,
         y_values=3 * x_values + subsonic_a1_ave,
-        ls="-",
-        lw=1.5,
+        linestyle="-",
+        linewidth=1.5,
     )
 
     ## supersonic growth rate
@@ -229,12 +230,12 @@ def main():
     supersonic_a1_ave = supersonic_fit_results["intercept"]["best"]
     supersonic_a1_std = supersonic_fit_results["intercept"]["std"]
     supersonic_label = rf"$10^{{{supersonic_a1_ave:.1f} \pm {supersonic_a1_std:.1f}}}\,\mathcal{{M}}^{{{supersonic_a0_ave:.1f} \pm {supersonic_a0_std:.1f}}}$"
-    plot_data.plot_wo_scaling_axis(
+    annotate_axis.overlay_curve(
         ax=axs[0],
         x_values=x_values,
         y_values=supersonic_a0_ave * x_values + supersonic_a1_ave,
-        ls="--",
-        lw=1.5,
+        linestyle="--",
+        linewidth=1.5,
         zorder=3,
     )
 
@@ -247,13 +248,13 @@ def main():
     )
     duration_a1_ave = duration_fit_results["intercept"]["best"]
     duration_a1_std = duration_fit_results["intercept"]["std"]
-    axs[1].axhline(y=duration_a1_ave, color="black", ls="-", lw=1.5, zorder=-1)
+    axs[1].axhline(y=duration_a1_ave, color="black", linestyle="-", linewidth=1.5, zorder=-1)
     duration_label = format_fit_label(
         intercept_best=duration_a1_ave,
         intercept_std=duration_a1_std,
         decimals=1,
     )
-    add_annotations.add_text(
+    annotate_axis.add_text(
         ax=axs[1],
         x_pos=0.035,
         y_pos=0.375,
@@ -264,27 +265,27 @@ def main():
     )
 
     ## annotate reference models
-    plot_data.plot_wo_scaling_axis(
+    annotate_axis.overlay_curve(
       ax       = axs[0],
       x_values = x_values,
       y_values = numpy.log10(3/38 * 2) + 3 * x_values, # xu and lazarian
       color    = model_colour,
-      ls       = ":",
-      lw       = 1.75,
+      linestyle       = ":",
+      linewidth       = 1.75,
       alpha    = 1.0,
       zorder   = 1,
     )
-    plot_data.plot_wo_scaling_axis(
+    annotate_axis.overlay_curve(
       ax       = axs[0],
       x_values = x_values,
       y_values = numpy.log10(0.05 * 2) + 3 * x_values, # beresnyak
       color    = model_colour,
-      ls       = (10, (10, 3, 1, 3, 1, 3)),
-      lw       = 1.75,
+      linestyle       = (10, (10, 3, 1, 3, 1, 3)),
+      linewidth       = 1.75,
       alpha    = 1.0,
       zorder   = 1,
     )
-    add_annotations.add_custom_legend(
+    annotate_axis.add_custom_legend(
         ax=axs[0],
         artists=[
             "--",
@@ -312,7 +313,7 @@ def main():
         edge_color="white",
         frame_alpha=0.75,
     )
-    add_annotations.add_custom_legend(
+    annotate_axis.add_custom_legend(
         ax=axs[0],
         artists=[
             ":",
@@ -346,17 +347,17 @@ def main():
         domain_bounds=ax0_bounds,
         domain_aspect_ratio=6 / 4,
     )
-    plot_data.plot_wo_scaling_axis(
+    annotate_axis.overlay_curve(
         ax=axs[0],
         x_values=guide_x_y6,
         y_values=guide_y_y6,
         color=guide_colour,
-        ls="-",
-        lw=1.75,
+        linestyle="-",
+        linewidth=1.75,
         alpha=1.0,
         zorder=1,
     )
-    add_annotations.add_text(
+    annotate_axis.add_text(
         ax=axs[0],
         x_pos=0.715,
         y_pos=0.575,
@@ -374,17 +375,17 @@ def main():
         domain_bounds=ax0_bounds,
         domain_aspect_ratio=6 / 4,
     )
-    plot_data.plot_wo_scaling_axis(
+    annotate_axis.overlay_curve(
         ax=axs[0],
         x_values=guide_x_y4,
         y_values=guide_y_y4,
         color=guide_colour,
-        ls="--",
-        lw=1.85,
+        linestyle="--",
+        linewidth=1.85,
         alpha=1.0,
         zorder=1,
     )
-    add_annotations.add_text(
+    annotate_axis.add_text(
         ax=axs[0],
         x_pos=0.85,
         y_pos=0.475,
@@ -407,7 +408,7 @@ def main():
     cbar_ticks = [3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7]
     cbar.set_ticks(cbar_ticks)
     cbar.set_ticklabels(f"{cbar_tick:.1f}" for cbar_tick in cbar_ticks)
-    add_annotations.add_custom_legend(
+    annotate_axis.add_custom_legend(
         ax=axs[1],
         artists=["o", "s", "D"],
         labels=[r"$288^3$", r"$576^3$", r"$1152^3$"],

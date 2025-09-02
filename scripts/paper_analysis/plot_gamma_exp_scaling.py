@@ -81,12 +81,10 @@ def main():
         scaled_gamma_exp_p50 = numpy.array(gamma_exp_stats["p50"]) / Mach_p50
         scaled_gamma_exp_normed_p50 = numpy.log10(scaled_gamma_exp_p50)
         scaled_gamma_exp_normed_err_lower = (
-            numpy.log10(scaled_gamma_exp_p50) -
-            numpy.log10(numpy.array(gamma_exp_stats["p16"]) / Mach_p50)
+            numpy.log10(scaled_gamma_exp_p50) - numpy.log10(numpy.array(gamma_exp_stats["p16"]) / Mach_p50)
         )
         scaled_gamma_exp_normed_err_upper = (
-            numpy.log10(numpy.array(gamma_exp_stats["p84"]) / Mach_p50) -
-            numpy.log10(scaled_gamma_exp_p50)
+            numpy.log10(numpy.array(gamma_exp_stats["p84"]) / Mach_p50) - numpy.log10(scaled_gamma_exp_p50)
         )
 
         Mach_color = cmap_Mach(norm_Mach(log10_Mach))
@@ -146,7 +144,7 @@ def main():
     )
     subsonic_a1_ave = subsonic_fit_results["intercept"]["best"]
     subsonic_a1_std = subsonic_fit_results["intercept"]["std"]
-    plot_data.plot_wo_scaling_axis(
+    annotate_axis.overlay_curve(
         ax=ax,
         x_values=x_values,
         y_values=(1 / 2) * x_values + subsonic_a1_ave,
@@ -182,7 +180,7 @@ def main():
     )
     supersonic_a1_ave = supersonic_fit_results["intercept"]["best"]
     supersonic_a1_std = supersonic_fit_results["intercept"]["std"]
-    plot_data.plot_wo_scaling_axis(
+    annotate_axis.overlay_curve(
         ax=ax,
         x_values=x_values,
         y_values=(1 / 3) * x_values + supersonic_a1_ave,

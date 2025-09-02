@@ -149,8 +149,7 @@ class BaseMCMCRoutine:
                 mcmc_sampler.sample(initial_state=perturbed_params, iterations=int(num_steps)),
                 total=int(num_steps),
             ),
-            maxlen=
-            0,  # discard returned samples; deque is only used to force evaluation of the generator
+            maxlen=0,  # discard returned samples; deque is only used to force evaluation of the generator
         )
         ## save key outputs
         self.raw_chain = mcmc_sampler.get_chain()

@@ -97,10 +97,7 @@ class EnsembleAverager:
                     mcmc_data = numpy.load(mcmc_data_path)
                     extracted_data = extract_from_mcmc_data(mcmc_data, model_type)
                     if binning_type not in combined_by_binning:
-                        combined_by_binning[binning_type] = {
-                            quantity_key: []
-                            for quantity_key in self.quantity_keys
-                        }
+                        combined_by_binning[binning_type] = {quantity_key: [] for quantity_key in self.quantity_keys}
                     for quantity_key in self.quantity_keys:
                         combined_by_binning[binning_type][quantity_key].append(
                             extracted_data[quantity_key],
@@ -165,14 +162,10 @@ def main():
     ).filter(
         directory=base_directory,
     )
-    sim_suites = set(
-        [str(sim_directory).split("/")[-1].split("v")[0] for sim_directory in all_directories],
-    )
+    sim_suites = set([str(sim_directory).split("/")[-1].split("v")[0] for sim_directory in all_directories], )
     all_results = {}
     for sim_suite in sorted(sim_suites):
-        directories_in_suite = [
-            sim_directory for sim_directory in all_directories if sim_suite in str(sim_directory)
-        ]
+        directories_in_suite = [sim_directory for sim_directory in all_directories if sim_suite in str(sim_directory)]
         ## average over the different simulation instances (at a particular resolution)
         sim_averager = EnsembleAverager(directories_in_suite)
         all_results[sim_suite] = sim_averager.run()

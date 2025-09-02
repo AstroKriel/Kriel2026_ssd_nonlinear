@@ -1,8 +1,32 @@
-**/__pycache__
-**.DS_Store
-**.pdf
+## dataproducts
+datasets*/
+
+## virtual environment directory
+venv/
+
+## build artifacts and metadata
+dist/
+**.egg-info/
+
+## extraneous MacOS files
+.DS_Store
+__pycache__/
+
+## typical plot outputs
 **.png
+**.pdf
+**.mp4
+**.gif
+
+## typical data products
+**.csv
+**.dat
 **.json
 **.npy
+**.h5
 
-datasets*/
+## jupyter notebook (+ LSP) files
+.ipynb_checkpoints/
+.virtual_documents/
+
+## .

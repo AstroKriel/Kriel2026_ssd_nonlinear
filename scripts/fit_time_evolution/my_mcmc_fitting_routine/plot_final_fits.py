@@ -58,10 +58,7 @@ class PlotFinalFits:
             replace=False,
         )
         modelled_curves = numpy.array(
-            [
-                self.model_func(self.fitted_posterior_samples[sample_index]).squeeze()
-                for sample_index in random_indices
-            ],
+            [self.model_func(self.fitted_posterior_samples[sample_index]).squeeze() for sample_index in random_indices],
         )
         p16, p84 = numpy.percentile(modelled_curves, [16, 84], axis=0)
         axs[0].fill_between(

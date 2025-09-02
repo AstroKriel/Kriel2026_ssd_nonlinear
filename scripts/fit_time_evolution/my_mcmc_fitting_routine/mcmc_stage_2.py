@@ -144,14 +144,11 @@ class Stage2MCMCRoutine(
         sat_energy_2d = sat_energy[:, None]  # (N, 1)
         nl_start_energy = init_energy * numpy.exp(exp_gamma * nl_start_time)  # (N,)
         nl_start_energy_2d = nl_start_energy[:, None]  # (N, 1)
-        nl_gamma = (sat_energy -
-                    nl_start_energy) / (sat_start_time - nl_start_time)**nl_exponent  # (N,)
+        nl_gamma = (sat_energy - nl_start_energy) / (sat_start_time - nl_start_time)**nl_exponent  # (N,)
         nl_gamma_2d = nl_gamma[:, None]  # (N, 1)
         ## assemble modelled SSD phases
         energy_2d = numpy.zeros((num_local_walkers, num_data_points))
-        energy_2d[mask_exp_phase] = (init_energy_2d *
-                                     numpy.exp(exp_gamma_2d * x_values_2d))[mask_exp_phase
-                                                                            ]  # (N, T)
+        energy_2d[mask_exp_phase] = (init_energy_2d * numpy.exp(exp_gamma_2d * x_values_2d))[mask_exp_phase]  # (N, T)
         energy_2d[mask_nl_phase] = (
             nl_start_energy_2d + nl_gamma_2d * (x_values_2d - nl_start_time_2d)**nl_exponent_2d
         )[mask_nl_phase]  # (N, T)
@@ -194,7 +191,8 @@ class Stage2MCMCRoutine(
                 ("nl_exponent", valid_nl_exponent),
             ]
             invalid_params = [
-                (param_name, param_valid_mask) for param_name, param_valid_mask in checks
+                (param_name, param_valid_mask)
+                for param_name, param_valid_mask in checks
                 if not numpy.all(param_valid_mask)
             ]
             message_parts = [

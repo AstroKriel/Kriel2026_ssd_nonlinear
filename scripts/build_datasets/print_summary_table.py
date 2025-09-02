@@ -20,8 +20,7 @@ def format_scientific(
 def main():
     data_dir = Path("/Users/necoturb/Documents/Codes/asgard/mimir/kriel_2025_ssd_nl/datasets_v2")
     sim_dirs = [
-        sim_directory for sim_directory in sorted(data_dir.glob("Mach*Re*Pm1Nres*"))
-        if io_manager.does_file_exist(
+        sim_directory for sim_directory in sorted(data_dir.glob("Mach*Re*Pm1Nres*")) if io_manager.does_file_exist(
             directory=sim_directory,
             file_name="dataset.json",
             raise_error=False,
@@ -40,8 +39,7 @@ def main():
         sim_set[plasma_params][Nres] += 1
     for (Mach, Re, nu), res_counts in sorted(sim_set.items()):
         runs_str = ", ".join(
-            f"${count} \\times {Nres}^3$" if count > 0 else f"${Nres}^3$"
-            for Nres, count in sorted(res_counts.items())
+            f"${count} \\times {Nres}^3$" if count > 0 else f"${Nres}^3$" for Nres, count in sorted(res_counts.items())
         )
         line = f"{Mach:.2f} & {Re} & {format_scientific(nu)} & {runs_str} \\\\"
         print(line)

@@ -114,8 +114,7 @@ def main():
         binned_data = compute_binned_data(
             x_values=subset_time_values,
             y_values=subset_magnetic_energy,
-            num_bins=int(numpy.max(subset_time_values) / t_turb) if
-            (num_bins is None) else num_bins,
+            num_bins=int(numpy.max(subset_time_values) / t_turb) if (num_bins is None) else num_bins,
         )
         stage1_initial_params = (
             -20,  # log10(E_init)
