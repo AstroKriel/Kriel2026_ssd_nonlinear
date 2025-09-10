@@ -1,23 +1,25 @@
 ## { SCRIPT
 
+
+##
+## === DEPENDENCIES ===
+##
+
 import numpy
-import random
 from pathlib import Path
 from matplotlib.colors import LinearSegmentedColormap
-from jormi.ww_io import json_files
+from jormi.ww_io import io_manager, json_files
 from jormi.ww_data import fit_data
 from jormi.ww_plots import plot_manager, plot_styler, annotate_axis, add_color
 
-MODEL_TYPE = "linear"
-# MODEL_TYPE = "quadratic"
-# MODEL_TYPE = "free"
 
-# BINNING_TYPE = "100bins"
-BINNING_TYPE = "bin_per_t0"
+##
+## === GLOBAL PARAMS ===
+##
 
-x_min, x_max = -1.5, 1.0
-y0_min, y0_max = -6.5, 0.0
-y1_min, y1_max = 0.0, 2.0
+X_MIN, X_MAX = -1.5, 1.0
+AX0_Y_MIN, AX0_Y_MAX = -6.5, 0.0
+AX1_Y_MIN, AX1_Y_MAX = 0.0, 2.0
 
 
 def format_fit_label(
@@ -64,92 +66,72 @@ def generate_line(
     return xs, ys
 
 
-def main():
-    summary_path = Path(
-        "/Users/necoturb/Documents/Codes/Asgard/mimir/kriel_2025_ssd_nl/datasets_v2/summary_stats.json",
-    )
-    all_results = json_files.read_json_file_into_dict(summary_path)
+##
+## === MAIN PROGRAM ===
+##
 
+def main():
+    ## define paths
+    script_dir = Path(__file__).parent
+    figures_dir = (script_dir / ".." / "figures").resolve()
+    io_manager.init_directory(figures_dir)
+    fig_path = figures_dir / "nl_scalings.pdf"
+    dataset_dir = (script_dir / ".." / "datasets" / "summary.json").resolve()
+    dataset = json_files.read_json_file_into_dict(dataset_dir)
+    ## setup figure
     plot_styler.apply_theme_globally()
     fig, axs = plot_manager.create_figure(num_rows=2)
-
+    ## define custom colormap
     custom_cmap = LinearSegmentedColormap.from_list(
         name="white-brown",
         colors=["#fdfdfd", "#f49325", "#010101"],
         N=256,
     )
-    cmap_Re, norm_Re = add_color.create_cmap(
+    cmap, norm = add_color.create_cmap(
         cmap_name=custom_cmap,
         vmin=3.1,
         vmax=3.7,
-        # cmin = 0.1,
         cmax=0.7,
     )
-
-    model_colour = cmap_Re(0.7)  # "blueviolet"
-    guide_colour = cmap_Re(0.7)  # "blueviolet"
-
+    model_color = cmap(0.7)
+    ## initialise data we want to fit to
     coords_to_fit = []
-    for sim_suite, sim_data in all_results.items():
-        print("Looking at:", sim_suite)
-
-        gamma_nl_stats = sim_data["fit_summaries"][MODEL_TYPE][BINNING_TYPE]["gamma_nl"]
-        if gamma_nl_stats["p50"] is None: continue
-
-        log10_gamma_nl_p50 = numpy.log10(gamma_nl_stats["p50"])
-        log10_gamma_nl_err_lower = log10_gamma_nl_p50 - numpy.log10(gamma_nl_stats["p16"])
-        log10_gamma_nl_err_upper = numpy.log10(gamma_nl_stats["p84"]) - log10_gamma_nl_p50
-
-        duration_stats = sim_data["fit_summaries"][MODEL_TYPE][BINNING_TYPE]["nl_duration"]
-        if duration_stats["p50"] is None: continue
-
-        log10_delta_t_p50 = numpy.log10(duration_stats["p50"])
-        log10_delta_t_err_lower = log10_delta_t_p50 - numpy.log10(duration_stats["p16"])
-        log10_delta_t_err_upper = numpy.log10(duration_stats["p84"]) - log10_delta_t_p50
-
-        Mach_stats = sim_data["sim_params"]["Mach"]
-        log10_Mach_p50 = numpy.log10(Mach_stats["p50"])
-        log10_Mach_err_lower = log10_Mach_p50 - numpy.log10(Mach_stats["p16"])
-        log10_Mach_err_upper = numpy.log10(Mach_stats["p84"]) - log10_Mach_p50
-
-        t_turb = 0.5 / Mach_stats["p50"]  # ell_turb / u_turb
-
-        Re_stats = sim_data["sim_params"]["Re"]
-        Re_p50 = Re_stats["p50"]
-        if Re_p50 < 1000: continue
-        Re_color = cmap_Re(norm_Re(numpy.log10(Re_p50)))
-
-        if "288" in sim_suite:
+    ## loop over and plot each ensemble-averaged simulation suite
+    for suite_name, suite_stats in dataset.items():
+        print("Looking at:", suite_name)
+        ## extract measured stats
+        log10_Mach = suite_stats["measured"]["log10_Mach"]
+        log10_Re = suite_stats["measured"]["log10_Re"]
+        log10_alpha_nl = suite_stats["measured"]["log10_alpha_nl"]
+        log10_nl_duration_normed_by_t0 = suite_stats["measured"]["log10_nl_duration_normed_by_t0"]
+        ## define look of marker
+        marker_color = cmap(norm(log10_Re["p50"]))
+        if "288" in suite_name:
             marker = "o"
             zorder = 1
-        elif "576" in sim_suite:
+        elif "576" in suite_name:
             marker = "s"
             zorder = 3
-        elif "1152" in sim_suite:
+        elif "1152" in suite_name:
             marker = "D"
             zorder = 5
         else:
-            print("Could not determine resolution for:", sim_suite)
+            print("Could not determine resolution for:", suite_name)
             continue
-
-        log10_Mach_jiggle = 0.05 * random.uniform(-1, 1),
-        log10_gamma_nl_jiggle = 0.05 * random.uniform(-1, 1)
-        log10_delta_t_jiggle = 0.05 * random.uniform(-1, 1)
-        x = log10_Mach_p50 + log10_Mach_jiggle
-        y1 = log10_gamma_nl_p50 + log10_gamma_nl_jiggle
+        ## plot
         axs[0].errorbar(
-            x,
-            y1,
+            log10_Mach["p50"],
+            log10_alpha_nl["p50"],
             xerr=[
-                [log10_Mach_err_lower],
-                [log10_Mach_err_upper],
+                [log10_Mach["std_lo"]],
+                [log10_Mach["std_hi"]],
             ],
             yerr=[
-                [log10_gamma_nl_err_lower],
-                [log10_gamma_nl_err_upper],
+                [log10_alpha_nl["std_lo"]],
+                [log10_alpha_nl["std_hi"]],
             ],
             fmt=marker,
-            markerfacecolor=Re_color,
+            markerfacecolor=marker_color,
             zorder=zorder,
             markeredgecolor="black",
             ecolor="black",
@@ -157,20 +139,19 @@ def main():
             linewidth=2,
             capsize=3,
         )
-        y2 = log10_delta_t_p50 + log10_delta_t_jiggle - numpy.log10(t_turb)
         axs[1].errorbar(
-            x,
-            y2,
+            log10_Mach["p50"],
+            log10_nl_duration_normed_by_t0["p50"],
             xerr=[
-                [log10_Mach_err_lower],
-                [log10_Mach_err_upper],
+                [log10_Mach["std_lo"]],
+                [log10_Mach["std_hi"]],
             ],
             yerr=[
-                [log10_delta_t_err_lower],
-                [log10_delta_t_err_upper],
+                [log10_nl_duration_normed_by_t0["std_lo"]],
+                [log10_nl_duration_normed_by_t0["std_hi"]],
             ],
             fmt=marker,
-            markerfacecolor=Re_color,
+            markerfacecolor=marker_color,
             zorder=zorder,
             markeredgecolor="black",
             ecolor="black",
@@ -178,27 +159,26 @@ def main():
             linewidth=2,
             capsize=3,
         )
+        ## collect data we want to fit to
         coords_to_fit.append((
-            numpy.float64(x),
-            numpy.float64(y1),
-            y2,
-            numpy.float64(log10_delta_t_err_lower),
+            numpy.float64(log10_Mach["p50"]),
+            numpy.float64(log10_alpha_nl["p50"]),
+            numpy.float64(log10_nl_duration_normed_by_t0["p50"]),
+            numpy.float64(log10_nl_duration_normed_by_t0["std_lo"]),
         ), )
-
+    ## label
     axs[0].set_xticklabels([])
     axs[1].set_xlabel(r"$\log_{10}(\mathcal{M})$")
     axs[0].set_ylabel(r"$\log_{10}(\alpha_{\rm nl})$")
     axs[1].set_ylabel(r"$\log_{10}\big((t_{\rm sat} - t_{\rm nl}) / t_0\big)$")
-    axs[0].set_xlim([x_min, x_max])
-    axs[1].set_xlim([x_min, x_max])
-    axs[0].set_ylim([y0_min, y0_max])
-    axs[1].set_ylim([y1_min, y1_max])
+    axs[0].set_xlim([X_MIN, X_MAX])
+    axs[1].set_xlim([X_MIN, X_MAX])
+    axs[0].set_ylim([AX0_Y_MIN, AX0_Y_MAX])
+    axs[1].set_ylim([AX1_Y_MIN, AX1_Y_MAX])
     axs[0].axvline(x=0, color="black", linestyle=":", linewidth=1.5)
     axs[1].axvline(x=0, color="black", linestyle=":", linewidth=1.5)
-
+    ## fit and overlay scalings
     x_values = numpy.linspace(-2, 2, 100)
-    ax0_bounds = (x_min, x_max, y0_min, y0_max)
-
     ## subsonic growth rate
     subsonic_fit_results = fit_data.fit_line_with_fixed_slope(
         x_values=[coord[0] for coord in coords_to_fit if coord[0] < 0],
@@ -219,7 +199,6 @@ def main():
         linestyle="-",
         linewidth=1.5,
     )
-
     ## supersonic growth rate
     supersonic_fit_results = fit_data.fit_1d_linear_model(
         x_values=[coord[0] for coord in coords_to_fit if 0 < coord[0]],
@@ -238,7 +217,6 @@ def main():
         linewidth=1.5,
         zorder=3,
     )
-
     ## universal duration
     duration_fit_results = fit_data.fit_line_with_fixed_slope(
         x_values=[coord[0] for coord in coords_to_fit],
@@ -263,38 +241,33 @@ def main():
         x_alignment="left",
         y_alignment="center",
     )
-
     ## annotate reference models
+    ## xu and lazarian
     annotate_axis.overlay_curve(
-      ax       = axs[0],
-      x_values = x_values,
-      y_values = numpy.log10(3/38 * 2) + 3 * x_values, # xu and lazarian
-      color    = model_colour,
-      linestyle       = ":",
-      linewidth       = 1.75,
-      alpha    = 1.0,
-      zorder   = 1,
+      ax        = axs[0],
+      x_values  = x_values,
+      y_values  = numpy.log10(3/38 * 2) + 3 * x_values,
+      color     = model_color,
+      linestyle = "-",
+      linewidth = 1.75,
+      alpha     = 1.0,
+      zorder    = 1,
     )
+    ## beresnyak 2012
     annotate_axis.overlay_curve(
-      ax       = axs[0],
-      x_values = x_values,
-      y_values = numpy.log10(0.05 * 2) + 3 * x_values, # beresnyak
-      color    = model_colour,
-      linestyle       = (10, (10, 3, 1, 3, 1, 3)),
-      linewidth       = 1.75,
-      alpha    = 1.0,
-      zorder   = 1,
+      ax        = axs[0],
+      x_values  = x_values,
+      y_values  = numpy.log10(0.05 * 2) + 3 * x_values,
+      color     = model_color,
+      linestyle = "--",
+      linewidth = 1.75,
+      alpha     = 1.0,
+      zorder    = 1,
     )
     annotate_axis.add_custom_legend(
         ax=axs[0],
-        artists=[
-            "--",
-            "-",
-        ],
-        colors=[
-            "black",
-            "black",
-        ],
+        artists=["--", "-"],
+        colors=["black", "black"],
         labels=[
             supersonic_label,
             subsonic_label + r"$\, \mathcal{M}^3$",
@@ -316,12 +289,12 @@ def main():
     annotate_axis.add_custom_legend(
         ax=axs[0],
         artists=[
-            ":",
-            (10, (10, 3, 1, 3, 1, 3)),
+            "-",
+            "--",
         ],
         colors=[
-            model_colour,
-            model_colour,
+            model_color,
+            model_color,
         ],
         labels=[
             r"$(3/38) \, u_0^3 / \ell_0$",
@@ -336,70 +309,44 @@ def main():
         num_cols=1,
         text_padding=0.5,
     )
-    guide_x0 = 0.3
-    guide_y0 = -3.75
-    guide_length = 0.5
-    guide_x_y6, guide_y_y6 = generate_line(
-        x_start=guide_x0,
-        y_start=guide_y0,
-        slope=6,
-        line_length=guide_length,
-        domain_bounds=ax0_bounds,
-        domain_aspect_ratio=6 / 4,
-    )
-    annotate_axis.overlay_curve(
-        ax=axs[0],
-        x_values=guide_x_y6,
-        y_values=guide_y_y6,
-        color=guide_colour,
-        linestyle="-",
-        linewidth=1.75,
-        alpha=1.0,
-        zorder=1,
-    )
-    annotate_axis.add_text(
-        ax=axs[0],
-        x_pos=0.715,
-        y_pos=0.575,
-        label=r"$\mathcal{M}^{6}$",
-        x_alignment="center",
-        y_alignment="center",
-        font_color=guide_colour,
-        fontsize=20,
-    )
-    guide_x_y4, guide_y_y4 = generate_line(
-        x_start=guide_x0,
-        y_start=guide_y0,
-        slope=4,
-        line_length=guide_length,
-        domain_bounds=ax0_bounds,
-        domain_aspect_ratio=6 / 4,
-    )
-    annotate_axis.overlay_curve(
-        ax=axs[0],
-        x_values=guide_x_y4,
-        y_values=guide_y_y4,
-        color=guide_colour,
-        linestyle="--",
-        linewidth=1.85,
-        alpha=1.0,
-        zorder=1,
-    )
-    annotate_axis.add_text(
-        ax=axs[0],
-        x_pos=0.85,
-        y_pos=0.475,
-        label=r"$\mathcal{M}^{4}$",
-        x_alignment="center",
-        y_alignment="center",
-        font_color=guide_colour,
-        fontsize=20,
-    )
-
+    # ## schleicher
+    # guide_x0 = 0.3
+    # guide_y0 = -3.75
+    # guide_length = 0.5
+    # ax0_bounds = (X_MIN, X_MAX, AX0_Y_MIN, AX0_Y_MAX)
+    # guide_x_y4, guide_y_y4 = generate_line(
+    #     x_start=guide_x0,
+    #     y_start=guide_y0,
+    #     slope=4,
+    #     line_length=guide_length,
+    #     domain_bounds=ax0_bounds,
+    #     domain_aspect_ratio=6 / 4,
+    # )
+    # annotate_axis.overlay_curve(
+    #     ax=axs[0],
+    #     x_values=guide_x_y4,
+    #     y_values=guide_y_y4,
+    #     color=guide_color,
+    #     linestyle="--",
+    #     linewidth=1.85,
+    #     alpha=1.0,
+    #     zorder=1,
+    # )
+    # annotate_axis.add_text(
+    #     ax=axs[0],
+    #     x_pos=0.85,
+    #     y_pos=0.475,
+    #     label=r"$\mathcal{M}^{4}$",
+    #     x_alignment="center",
+    #     y_alignment="center",
+    #     font_color=guide_color,
+    #     fontsize=20,
+    # )
+    ## add colorbar
     cbar = add_color.add_cbar_from_cmap(
         ax=axs[0],
-        cmap=cmap_Re,
-        norm=norm_Re,
+        cmap=cmap,
+        norm=norm,
         label=r"$\log_{10}(\mathrm{Re})$",
         side="top",
         cbar_padding=0.015,
@@ -423,13 +370,13 @@ def main():
         text_padding=0.0,
         column_spacing=0.0,
     )
-    script_dir = Path(__file__).parent
-    plot_path = script_dir / "nl_scalings.pdf"
-    plot_manager.save_figure(fig, plot_path)
+    plot_manager.save_figure(fig, fig_path)
 
+##
+## === ENTRY POINT ===
+##
 
 if __name__ == "__main__":
-    random.seed(5)
     main()
 
 ## } SCRIPT

@@ -19,13 +19,13 @@ def main():
     script_dir = Path(__file__).parent
     figures_dir = (script_dir / ".." / "figures").resolve()
     io_manager.init_directory(figures_dir)
-    plot_path = figures_dir / "nl_exponent.pdf"
+    fig_path = figures_dir / "nl_exponent.pdf"
     dataset_dir = (script_dir / ".." / "datasets" / "summary.json").resolve()
     dataset = json_files.read_json_file_into_dict(dataset_dir)
     ## setup figure
     plot_styler.apply_theme_globally()
     fig, ax = plot_manager.create_figure()
-    ## define custom colourmap
+    ## define custom colormap
     custom_cmap = LinearSegmentedColormap.from_list(
         name="black-green",
         colors=["#68287d", "#d0a7c7", "#f2f0e0", "#d5e370", "#275b0e"],
@@ -43,7 +43,7 @@ def main():
         log10_Mach = suite_stats["measured"]["log10_Mach"]
         log10_Re = suite_stats["measured"]["log10_Re"]
         p_nl = suite_stats["measured"]["p_nl"]
-        ##
+        ## tweak plot params
         color = cmap(norm(p_nl["p50"]))
         if "288" in suite_name:
             marker = "o"
@@ -105,7 +105,7 @@ def main():
         position="upper left",
         anchor=(0.0, 0.95),
     )
-    plot_manager.save_figure(fig, plot_path)
+    plot_manager.save_figure(fig, fig_path)
 
 
 ##

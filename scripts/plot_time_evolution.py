@@ -12,7 +12,7 @@ from matplotlib.colors import LinearSegmentedColormap
 from jormi.utils import list_utils
 from jormi.ww_io import io_manager, json_files
 from jormi.ww_data import interpolate_data
-from jormi.ww_plots import plot_manager, add_color, add_annotations
+from jormi.ww_plots import plot_manager, plot_styler, add_color
 
 ##
 ## === MAIN PROGRAM ===
@@ -26,8 +26,9 @@ def main():
     )
     all_results = json_files.read_json_file_into_dict(summary_path)
 
+    plot_styler.apply_theme_globally()
     fig, axs = plot_manager.create_figure(num_rows=2, share_x=True)
-    ax_inset = add_annotations.add_inset_axis(
+    ax_inset = plot_manager.add_inset_axis(
         ax=axs[0],
         bounds=(0.45, 0.1, 0.475, 0.5),
         x_label_side="top",
@@ -142,13 +143,13 @@ def main():
             zorder=1 / target_Mach,
         )
         ax_inset.plot(
-            interp_time_values - interp_time_values[index_start],
+            numpy.log10(interp_time_values - interp_time_values[index_start]),
             Emag_p50_vals,
             color=color,
             zorder=1 / target_Mach,
         )
         ax_inset.fill_between(
-            interp_time_values - interp_time_values[index_start],
+            numpy.log10(interp_time_values - interp_time_values[index_start]),
             Emag_p16_vals,
             Emag_p84_vals,
             color=color,
@@ -166,11 +167,14 @@ def main():
     axs[0].set_ylim([-10.5, 1])
     axs[1].set_ylim([-0.025, 1.5])
 
-    ax_inset.set_xlim([0, 400])
+    ax_inset.set_xlim([0.5, 3])
     ax_inset.set_ylim([0, 2])
+    ticks = [1, 2, 3]
+    ax_inset.set_xticks(ticks)
+    ax_inset.set_xticklabels(f"{tick}" for tick in ticks)
     ax_inset.axhline(y=1, ls=":", color="black", zorder=100)
     ax_inset.set_ylabel(r"$E_\mathrm{mag} / \mathrm{E_\mathrm{mag, sat}}$")
-    ax_inset.set_xlabel(r"$t / t_\mathrm{sc}$", labelpad=8)
+    ax_inset.set_xlabel(r"$\log_{10}(t / t_\mathrm{sc})$", labelpad=8)
 
     add_color.add_cbar_from_cmap(
         ax=axs[0],
@@ -182,8 +186,8 @@ def main():
         fontsize=24,
     )
     script_dir = Path(__file__).parent
-    plot_path = script_dir / "time_evolution.pdf"
-    plot_manager.save_figure(fig, plot_path)
+    fig_path = script_dir / "time_evolution.pdf"
+    plot_manager.save_figure(fig, fig_path)
 
 
 ##
