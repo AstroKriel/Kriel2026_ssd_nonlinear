@@ -1,6 +1,5 @@
 ## { SCRIPT
 
-
 ##
 ## === DEPENDENCIES ===
 ##
@@ -11,7 +10,6 @@ from matplotlib.colors import LinearSegmentedColormap
 from jormi.ww_io import io_manager, json_files
 from jormi.ww_data import fit_data
 from jormi.ww_plots import plot_manager, plot_styler, annotate_axis, add_color
-
 
 ##
 ## === GLOBAL PARAMS ===
@@ -70,13 +68,14 @@ def generate_line(
 ## === MAIN PROGRAM ===
 ##
 
+
 def main():
     ## define paths
     script_dir = Path(__file__).parent
-    figures_dir = (script_dir / ".." / "figures").resolve()
+    figures_dir = (script_dir / ".." / ".." / "figures").resolve()
     io_manager.init_directory(figures_dir)
     fig_path = figures_dir / "nl_scalings.pdf"
-    dataset_dir = (script_dir / ".." / "datasets" / "summary.json").resolve()
+    dataset_dir = (script_dir / ".." / ".." / "datasets" / "summary.json").resolve()
     dataset = json_files.read_json_file_into_dict(dataset_dir)
     ## setup figure
     plot_styler.apply_theme_globally()
@@ -160,12 +159,14 @@ def main():
             capsize=3,
         )
         ## collect data we want to fit to
-        coords_to_fit.append((
-            numpy.float64(log10_Mach["p50"]),
-            numpy.float64(log10_alpha_nl["p50"]),
-            numpy.float64(log10_nl_duration_normed_by_t0["p50"]),
-            numpy.float64(log10_nl_duration_normed_by_t0["std_lo"]),
-        ), )
+        coords_to_fit.append(
+            (
+                numpy.float64(log10_Mach["p50"]),
+                numpy.float64(log10_alpha_nl["p50"]),
+                numpy.float64(log10_nl_duration_normed_by_t0["p50"]),
+                numpy.float64(log10_nl_duration_normed_by_t0["std_hi"]), # assume summetric uncertainty
+            ),
+        )
     ## label
     axs[0].set_xticklabels([])
     axs[1].set_xlabel(r"$\log_{10}(\mathcal{M})$")
@@ -201,8 +202,8 @@ def main():
     )
     ## supersonic growth rate
     supersonic_fit_results = fit_data.fit_1d_linear_model(
-        x_values=[coord[0] for coord in coords_to_fit if 0 < coord[0]],
-        y_values=[coord[1] for coord in coords_to_fit if 0 < coord[0]],
+        x_values=[coord[0] for coord in coords_to_fit if -0.2 < coord[0]],
+        y_values=[coord[1] for coord in coords_to_fit if -0.2 < coord[0]],
     )
     supersonic_a0_ave = supersonic_fit_results["slope"]["best"]
     supersonic_a0_std = supersonic_fit_results["slope"]["std"]
@@ -244,25 +245,25 @@ def main():
     ## annotate reference models
     ## xu and lazarian
     annotate_axis.overlay_curve(
-      ax        = axs[0],
-      x_values  = x_values,
-      y_values  = numpy.log10(3/38 * 2) + 3 * x_values,
-      color     = model_color,
-      linestyle = "-",
-      linewidth = 1.75,
-      alpha     = 1.0,
-      zorder    = 1,
+        ax=axs[0],
+        x_values=x_values,
+        y_values=numpy.log10(3 / 38 * 2) + 3 * x_values, # scaled by 1/ell_0 = 2.0
+        color=model_color,
+        linestyle="-",
+        linewidth=1.75,
+        alpha=1.0,
+        zorder=1,
     )
     ## beresnyak 2012
     annotate_axis.overlay_curve(
-      ax        = axs[0],
-      x_values  = x_values,
-      y_values  = numpy.log10(0.05 * 2) + 3 * x_values,
-      color     = model_color,
-      linestyle = "--",
-      linewidth = 1.75,
-      alpha     = 1.0,
-      zorder    = 1,
+        ax=axs[0],
+        x_values=x_values,
+        y_values=numpy.log10(0.05 * 2) + 3 * x_values, # scaled by 1/ell_0 = 2.0
+        color=model_color,
+        linestyle="--",
+        linewidth=1.75,
+        alpha=1.0,
+        zorder=1,
     )
     annotate_axis.add_custom_legend(
         ax=axs[0],
@@ -371,6 +372,7 @@ def main():
         column_spacing=0.0,
     )
     plot_manager.save_figure(fig, fig_path)
+
 
 ##
 ## === ENTRY POINT ===

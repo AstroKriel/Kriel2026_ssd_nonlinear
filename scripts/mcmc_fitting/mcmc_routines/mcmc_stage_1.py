@@ -13,8 +13,7 @@ from . import mcmc_utils
 ##
 
 
-class Stage1MCMCRoutine(
-        base_mcmc.BaseMCMCRoutine, ):
+class Stage1MCMCRoutine(base_mcmc.BaseMCMCRoutine):
 
     def __init__(
         self,
@@ -26,8 +25,9 @@ class Stage1MCMCRoutine(
         initial_params: tuple[float, ...],
         plot_posterior_kde: bool = True,
     ):
-        assert len(initial_params
-                   ) == 3, ("Stage 1 MCMC routine expects 3 initial params: log10(E_init), gamma_exp, and t_approx")
+        assert len(
+            initial_params,
+        ) == 3, ("Stage 1 MCMC routine expects 3 initial params: log10(E_init), gamma_exp, and t_approx")
         self.log10_e = numpy.log10(numpy.exp(1))
         self.max_sim_time = numpy.max(time_values)
         super().__init__(

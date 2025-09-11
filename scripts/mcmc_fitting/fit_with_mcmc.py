@@ -8,11 +8,11 @@ import numpy
 import argparse
 from pathlib import Path
 from jormi.ww_io import io_manager, json_files
-from my_mcmc_fitting_routine.mcmc_stage_1 import Stage1MCMCRoutine
-from my_mcmc_fitting_routine.mcmc_stage_2 import Stage2MCMCRoutine_free
-from my_mcmc_fitting_routine.mcmc_stage_2 import Stage2MCMCRoutine_linear
-from my_mcmc_fitting_routine.mcmc_stage_2 import Stage2MCMCRoutine_quadratic
-from my_mcmc_fitting_routine.plot_final_fits import PlotFinalFits
+from mcmc_routines.mcmc_stage_1 import Stage1MCMCRoutine
+from mcmc_routines.mcmc_stage_2 import Stage2MCMCRoutine_free
+from mcmc_routines.mcmc_stage_2 import Stage2MCMCRoutine_linear
+from mcmc_routines.mcmc_stage_2 import Stage2MCMCRoutine_quadratic
+from mcmc_routines.plot_final_fits import PlotFinalFits
 
 ##
 ## === HELPER FUNCTIONS ===

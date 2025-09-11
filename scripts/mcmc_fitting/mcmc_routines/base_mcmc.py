@@ -137,7 +137,7 @@ class BaseMCMCRoutine:
         self.num_steps = num_steps
         perturbed_params = numpy.array(
             self.initial_params,
-        ) + 1e-4 * numpy.random.randn(self.num_walkers, self.num_params)
+        ) + 1e-3 * numpy.random.randn(self.num_walkers, self.num_params)
         mcmc_sampler = emcee.EnsembleSampler(
             nwalkers=self.num_walkers,
             ndim=self.num_params,
@@ -152,11 +152,15 @@ class BaseMCMCRoutine:
             maxlen=0,  # discard returned samples; deque is only used to force evaluation of the generator
         )
         ## save key outputs
+        acc_fracs = mcmc_sampler.acceptance_fraction  # shape: (nwalkers,)
+        median_acc = float(numpy.median(acc_fracs))
+        low, high = float(numpy.min(acc_fracs)), float(numpy.max(acc_fracs))
+        print(f"Acceptance fraction: median={median_acc:.3f} [{low:.3f}, {high:.3f}]")
         self.raw_chain = mcmc_sampler.get_chain()
         self._check_chain_convergence(mcmc_sampler)
         self.fitted_posterior_samples = mcmc_sampler.get_chain(
             discard=int(burn_in_steps),
-            thin=10,
+            # thin=10,
             flat=True,
         )
         self.fitted_log_likelihoods = self._log_likelihood(self.fitted_posterior_samples)
@@ -236,27 +240,78 @@ class BaseMCMCRoutine:
             raise
         return ll_values
 
-    def _check_chain_convergence(
-        self,
-        mcmc_sampler,
-    ):
-        try:
-            self.auto_correlation_time = mcmc_sampler.get_autocorr_time()
-            is_converged = numpy.all(self.auto_correlation_time * 50 < self.num_steps)
-            if numpy.any(self.auto_correlation_time * 5 > self.num_steps):
-                print(
-                    "WARNING: Chain length may be too short to reliably estimate the autocorrelation time.",
-                )
-            if not is_converged:
-                print("WARNING: Chain appears to not have converged.")
+    def _check_chain_convergence(self, mcmc_sampler) -> dict:
+        """
+        Run lightweight convergence diagnostics on the *raw* emcee chain.
+        Reports (a) acceptance fractions, (b) integrated autocorrelation times tau,
+        and (c) approximate effective sample sizes (ESS). Sets attributes on `self`
+        and returns a summary dict.
+        """
+        summary: dict = {}
+        # --- Acceptance fraction diagnostics (always available)
+        acc_fracs = numpy.asarray(getattr(mcmc_sampler, "acceptance_fraction", []), dtype=float)
+        if acc_fracs.size:
+            acc_med = float(numpy.median(acc_fracs))
+            acc_min = float(numpy.min(acc_fracs))
+            acc_max = float(numpy.max(acc_fracs))
+            summary["acceptance_fraction"] = {
+                "median": acc_med,
+                "min": acc_min,
+                "max": acc_max,
+                "per_walker": acc_fracs.tolist(),
+            }
+            # Heuristic guidance band
+            if acc_med < 0.15:
+                print(f"WARNING: Low median acceptance fraction ({acc_med:.3f}); chains may be stuck.")
+            elif acc_med > 0.70:
+                print(f"WARNING: High median acceptance fraction ({acc_med:.3f}); steps may be too small.")
             else:
-                print(
-                    f"Chains appear to have converged. The autocorrelation time for the parameters are: {self.auto_correlation_time}",
-                )
+                print(f"Acceptance fraction OK: median={acc_med:.3f} [{acc_min:.3f}, {acc_max:.3f}]")
+            # Store on self for later reporting if you like
+            self.acceptance_fraction = acc_fracs
+        else:
+            print("NOTE: Sampler did not report acceptance fractions.")
+        # --- Autocorrelation time and ESS
+        nwalk = getattr(mcmc_sampler, "nwalkers", None) or self.num_walkers
+        nstep = int(self.num_steps)
+        ndim  = getattr(mcmc_sampler, "ndim", None) or getattr(self, "num_params", None)
+        try:
+            # tol=0 gives the most conservative estimate; it will raise if chain is too short
+            tau = numpy.asarray(mcmc_sampler.get_autocorr_time(tol=0), dtype=float)  # shape: (ndim,)
+            self.auto_correlation_time = tau
+            tau_med = float(numpy.median(tau))
+            tau_max = float(numpy.max(tau))
+            summary["autocorr_time"] = {"per_param": tau.tolist(), "median": tau_med, "max": tau_max}
+            # Effective sample size per parameter (rough heuristic): N / (2*tau)
+            # where N = nwalkers * nsteps (raw, unthinned)
+            N_raw = nwalk * nstep
+            ess = (N_raw / (2.0 * tau))
+            ess_med = float(numpy.median(ess))
+            ess_min = float(numpy.min(ess))
+            summary["ess"] = {"per_param": ess.tolist(), "median": ess_med, "min": ess_min, "N_raw": int(N_raw)}
+            # Simple convergence gates based on tau
+            # - Good: nstep >= 50 * tau_max
+            # - Borderline: 5 * tau_max <= nstep < 50 * tau_max
+            # - Poor: nstep < 5 * tau_max
+            if nstep >= 50 * tau_max:
+                print(f"Chains appear converged: n_steps={nstep} ≥ 50×tau_max≈{tau_max:.1f}.")
+            elif nstep >= 5 * tau_max:
+                print(f"WARNING: Borderline length: n_steps={nstep} is between 5× and 50× tau_max≈{tau_max:.1f}.")
+            else:
+                print(f"WARNING: Chain likely too short: n_steps={nstep} < 5× tau_max≈{tau_max:.1f}.")
+            print(f"Autocorr time (median/max): {tau_med:.1f}/{tau_max:.1f} steps; "
+                f"approx. ESS median/min: {ess_med:.0f}/{ess_min:.0f} out of N={N_raw} raw samples.")
         except emcee.autocorr.AutocorrError:
-            print(
-                "WARNING: The autocorrelation time could not be estimated reliably. Chain may not be long enough.",
-            )
+            # Fall back to a softer message if tau is unreliable at current length
+            print("WARNING: Could not reliably estimate autocorrelation time (chain likely too short). "
+                "Proceeding with visual/heuristic checks.")
+            self.auto_correlation_time = None
+            summary["autocorr_time"] = None
+            summary["ess"] = None
+        # Optionally store a compact dict on self for later reporting
+        self.convergence_summary = summary
+        return summary
+
 
     def _make_plots(
         self,

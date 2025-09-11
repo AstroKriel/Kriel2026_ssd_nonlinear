@@ -17,11 +17,11 @@ from jormi.ww_plots import plot_manager, plot_styler, annotate_axis, add_color
 def main():
     ## define paths
     script_dir = Path(__file__).parent
-    figures_dir = (script_dir / ".." / "figures").resolve()
+    figures_dir = (script_dir / ".." / ".." / "figures").resolve()
     io_manager.init_directory(figures_dir)
     fig_path = figures_dir / "nl_exponent.pdf"
-    dataset_dir = (script_dir / ".." / "datasets" / "summary.json").resolve()
-    dataset = json_files.read_json_file_into_dict(dataset_dir)
+    dataset_path = (script_dir / ".." / ".." / "datasets" / "summary.json").resolve()
+    dataset = json_files.read_json_file_into_dict(dataset_path)
     ## setup figure
     plot_styler.apply_theme_globally()
     fig, ax = plot_manager.create_figure()
@@ -39,6 +39,12 @@ def main():
     ## loop over and plot each ensemble-averaged simulation suite
     for suite_name, suite_stats in dataset.items():
         print("Looking at:", suite_name)
+        sim_path = (script_dir / ".." / ".." / "datasets" / "backup" / f"{suite_name}v1" / "dataset.json").resolve()
+        sim_data = json_files.read_json_file_into_dict(sim_path)
+        target_Mach = sim_data["plasma_params"]["target_Mach"]
+        target_Re = sim_data["plasma_params"]["target_Re"]
+        dataset[suite_name]["input"]["target_Mach"] = target_Mach
+        dataset[suite_name]["input"]["target_Re"] = target_Re
         ## extract measured stats
         log10_Mach = suite_stats["measured"]["log10_Mach"]
         log10_Re = suite_stats["measured"]["log10_Re"]
@@ -76,6 +82,7 @@ def main():
             capsize=3,
             zorder=zorder,
         )
+    json_files.save_dict_to_json_file(str(dataset_path).replace(".json", "_v2.json"), dataset)
     ## label and save
     ax.set_xlim([-1.5, 1.0])
     ax.set_ylim([2.95, 3.8])

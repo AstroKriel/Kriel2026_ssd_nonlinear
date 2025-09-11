@@ -31,10 +31,10 @@ def format_fit_label(
 def main():
     ## define paths
     script_dir = Path(__file__).parent
-    figures_dir = (script_dir / ".." / "figures").resolve()
+    figures_dir = (script_dir / ".." / ".." / "figures").resolve()
     io_manager.init_directory(figures_dir)
     fig_path = figures_dir / "gamma_exp_scaling.pdf"
-    dataset_dir = (script_dir / ".." / "datasets" / "summary.json").resolve()
+    dataset_dir = (script_dir / ".." / ".." / "datasets" / "summary.json").resolve()
     dataset = json_files.read_json_file_into_dict(dataset_dir)
     ## setup figure
     plot_styler.apply_theme_globally()

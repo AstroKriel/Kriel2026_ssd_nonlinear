@@ -22,7 +22,7 @@ from jormi.ww_plots import plot_manager, plot_styler, add_color
 def main():
     num_points = 10**3
     summary_path = Path(
-        "/Users/necoturb/Documents/Codes/Asgard/mimir/kriel_2025_ssd_nl/datasets_v2/summary_stats.json",
+        "/Users/necoturb/Documents/Codes/Asgard/mimir/kriel_2025_ssd_nl/datasets/summary_stats.json",
     )
     all_results = json_files.read_json_file_into_dict(summary_path)
 
