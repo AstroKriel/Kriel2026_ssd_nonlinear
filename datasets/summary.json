@@ -4,7 +4,9 @@
       "Nres": 288,
       "count": 5,
       "nu": 1.6666666666666667e-05,
-      "t0": 10.0
+      "t0": 10.0,
+      "target_Mach": 0.05,
+      "target_Re": 1500
     },
     "measured": {
       "log10_Mach": {
@@ -44,7 +46,9 @@
       "Nres": 576,
       "count": 5,
       "nu": 1.6666666666666667e-05,
-      "t0": 10.0
+      "t0": 10.0,
+      "target_Mach": 0.05,
+      "target_Re": 1500
     },
     "measured": {
       "log10_Mach": {
@@ -84,7 +88,9 @@
       "Nres": 576,
       "count": 5,
       "nu": 3.3333333333333335e-05,
-      "t0": 5.0
+      "t0": 5.0,
+      "target_Mach": 0.1,
+      "target_Re": 1500
     },
     "measured": {
       "log10_Mach": {
@@ -124,7 +130,9 @@
       "Nres": 1152,
       "count": 3,
       "nu": 9.999999999999999e-05,
-      "t0": 1.6666666666666667
+      "t0": 1.6666666666666667,
+      "target_Mach": 0.3,
+      "target_Re": 1500
     },
     "measured": {
       "log10_Mach": {
@@ -164,7 +172,9 @@
       "Nres": 288,
       "count": 1,
       "nu": 9.999999999999999e-05,
-      "t0": 1.6666666666666667
+      "t0": 1.6666666666666667,
+      "target_Mach": 0.3,
+      "target_Re": 1500
     },
     "measured": {
       "log10_Mach": {
@@ -204,7 +214,9 @@
       "Nres": 576,
       "count": 1,
       "nu": 9.999999999999999e-05,
-      "t0": 1.6666666666666667
+      "t0": 1.6666666666666667,
+      "target_Mach": 0.3,
+      "target_Re": 1500
     },
     "measured": {
       "log10_Mach": {
@@ -244,7 +256,9 @@
       "Nres": 576,
       "count": 9,
       "nu": 0.00025,
-      "t0": 1.0
+      "t0": 1.0,
+      "target_Mach": 0.5,
+      "target_Re": 1000
     },
     "measured": {
       "log10_Mach": {
@@ -284,7 +298,9 @@
       "Nres": 1152,
       "count": 3,
       "nu": 0.00016666666666666666,
-      "t0": 1.0
+      "t0": 1.0,
+      "target_Mach": 0.5,
+      "target_Re": 1500
     },
     "measured": {
       "log10_Mach": {
@@ -324,7 +340,9 @@
       "Nres": 576,
       "count": 9,
       "nu": 0.00016666666666666666,
-      "t0": 1.0
+      "t0": 1.0,
+      "target_Mach": 0.5,
+      "target_Re": 1500
     },
     "measured": {
       "log10_Mach": {
@@ -364,7 +382,9 @@
       "Nres": 1152,
       "count": 3,
       "nu": 8.333333333333333e-05,
-      "t0": 1.0
+      "t0": 1.0,
+      "target_Mach": 0.5,
+      "target_Re": 3000
     },
     "measured": {
       "log10_Mach": {
@@ -404,7 +424,9 @@
       "Nres": 576,
       "count": 9,
       "nu": 8.333333333333333e-05,
-      "t0": 1.0
+      "t0": 1.0,
+      "target_Mach": 0.5,
+      "target_Re": 3000
     },
     "measured": {
       "log10_Mach": {
@@ -444,7 +466,9 @@
       "Nres": 1152,
       "count": 5,
       "nu": 5e-05,
-      "t0": 1.0
+      "t0": 1.0,
+      "target_Mach": 0.5,
+      "target_Re": 5000
     },
     "measured": {
       "log10_Mach": {
@@ -484,7 +508,9 @@
       "Nres": 576,
       "count": 1,
       "nu": 5e-05,
-      "t0": 1.0
+      "t0": 1.0,
+      "target_Mach": 0.5,
+      "target_Re": 5000
     },
     "measured": {
       "log10_Mach": {
@@ -524,7 +550,9 @@
       "Nres": 1152,
       "count": 3,
       "nu": 0.0002666666666666667,
-      "t0": 0.625
+      "t0": 0.625,
+      "target_Mach": 0.8,
+      "target_Re": 1500
     },
     "measured": {
       "log10_Mach": {
@@ -564,7 +592,9 @@
       "Nres": 288,
       "count": 1,
       "nu": 0.0002666666666666667,
-      "t0": 0.625
+      "t0": 0.625,
+      "target_Mach": 0.8,
+      "target_Re": 1500
     },
     "measured": {
       "log10_Mach": {
@@ -604,7 +634,9 @@
       "Nres": 576,
       "count": 1,
       "nu": 0.0002666666666666667,
-      "t0": 0.625
+      "t0": 0.625,
+      "target_Mach": 0.8,
+      "target_Re": 1500
     },
     "measured": {
       "log10_Mach": {
@@ -644,7 +676,9 @@
       "Nres": 576,
       "count": 5,
       "nu": 0.0006666666666666666,
-      "t0": 0.25
+      "t0": 0.25,
+      "target_Mach": 2.0,
+      "target_Re": 1500
     },
     "measured": {
       "log10_Mach": {
@@ -684,7 +718,9 @@
       "Nres": 288,
       "count": 5,
       "nu": 0.0003333333333333333,
-      "t0": 0.25
+      "t0": 0.25,
+      "target_Mach": 2.0,
+      "target_Re": 3000
     },
     "measured": {
       "log10_Mach": {
@@ -724,7 +760,9 @@
       "Nres": 576,
       "count": 5,
       "nu": 0.0016666666666666668,
-      "t0": 0.1
+      "t0": 0.1,
+      "target_Mach": 5.0,
+      "target_Re": 1500
     },
     "measured": {
       "log10_Mach": {
@@ -764,7 +802,9 @@
       "Nres": 576,
       "count": 5,
       "nu": 0.0008333333333333334,
-      "t0": 0.1
+      "t0": 0.1,
+      "target_Mach": 5.0,
+      "target_Re": 3000
     },
     "measured": {
       "log10_Mach": {
@@ -804,7 +844,9 @@
       "Nres": 576,
       "count": 5,
       "nu": 0.0005,
-      "t0": 0.1
+      "t0": 0.1,
+      "target_Mach": 5.0,
+      "target_Re": 5000
     },
     "measured": {
       "log10_Mach": {
