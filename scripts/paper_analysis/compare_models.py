@@ -1,13 +1,24 @@
-import numpy
+## { SCRIPT
+
+##
+## === DEPENDENCIES
+##
+
+## stdlib
 from pathlib import Path
-from jormi.ww_io import io_manager, json_files
+
+## third-party
+import numpy
+
+## personal
+from jormi.ww_io import manage_io, json_io
 
 
 def get_max_loglikelihood(
     sim_dir: Path,
     model_name: str,
 ) -> float | None:
-    ll_path = io_manager.combine_file_path_parts(
+    ll_path = manage_io.combine_file_path_parts(
         [sim_dir, model_name, "bin_per_t0", f"stage2_{model_name}_fitted_log_likelihoods.npy"],
     )
     ll_data = numpy.load(ll_path)
@@ -15,8 +26,8 @@ def get_max_loglikelihood(
 
 
 def get_linear_model_weight(
-    max_ll_linear: float,
-    max_ll_quadratic: float,
+    max_ll_linear: float | None,
+    max_ll_quadratic: float | None,
 ) -> float:
     aic_linear = -2 * max_ll_linear
     aic_quadratic = -2 * max_ll_quadratic
@@ -26,21 +37,21 @@ def get_linear_model_weight(
     )
 
 
-def main():
+def main() -> None:
     script_dir = Path(__file__).parent
     dataset_dir = (script_dir / ".." / "datasets").resolve()
-    sim_dirs = io_manager.ItemFilter(
-        include_string="Mach",
+    sim_dirs = manage_io.ItemFilter(
+        req_include_words="Mach",
         include_files=False,
         include_folders=True,
     ).filter(
-        directory=dataset_dir / "backup"
+        directory=dataset_dir / "sims"
     )
     num_sims = 0
     agreement = 0
     for sim_dir in sim_dirs:
-        sim_data = json_files.read_json_file_into_dict(sim_dir / "dataset.json", verbose=False)
-        target_Mach = float(sim_data["plasma_params"]["target_Mach"])
+        sim_data = json_io.read_json_file_into_dict(sim_dir / "sim_data.json", verbose=False)
+        target_Mach = float(sim_data["details"]["target_Mach"])
         max_ll_linear = get_max_loglikelihood(sim_dir, "linear")
         max_ll_quadratic = get_max_loglikelihood(sim_dir, "quadratic")
         linear_model_weight = get_linear_model_weight(max_ll_linear, max_ll_quadratic)
@@ -55,3 +66,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+## } SCRIPT

@@ -1,22 +1,30 @@
 ## { MODULE
 
 ##
-## === DEPENDENCIES ===
+## === DEPENDENCIES
 ##
 
+## stdlib
+from pathlib import Path
+from collections import deque
+from typing import Any, Callable
+
+## third-party
 import numpy
 import emcee
 from tqdm import tqdm
-from pathlib import Path
-from collections import deque
 from scipy.stats import gaussian_kde
-from jormi.ww_io import io_manager
+
+## personal
+from jormi.ww_io import manage_io
+
+## local
 from . import plot_chain_evolution
 from . import plot_model_posteriors
 from . import plot_model_fits
 
 ##
-## === BASE ROUTINE ===
+## === BASE ROUTINE
 ##
 
 
@@ -30,39 +38,39 @@ class BaseMCMCRoutine:
 
     def _model(
         self,
-        param_vectors,
-    ):
+        param_vectors: numpy.ndarray,
+    ) -> numpy.ndarray:
         raise NotImplementedError()
 
     def _get_valid_params_mask(
         self,
-        param_vectors,
-    ):
+        param_vectors: numpy.ndarray,
+    ) -> numpy.ndarray:
         raise NotImplementedError()
 
     ## hooks that can be overwritten by each subclass
 
     def _get_kde_params(
         self,
-        param_vectors,
-    ):
+        param_vectors: numpy.ndarray,
+    ) -> numpy.ndarray:
         return numpy.asarray(param_vectors)
 
     def _get_output_params(
         self,
-    ):
+    ) -> tuple[numpy.ndarray, list[str]]:
         return self.fitted_posterior_samples, self.fitted_param_labels
 
     def _annotate_fitted_params(
         self,
-        axs,
-    ):
+        axs: Any,
+    ) -> None:
         pass
 
     def _annotate_output_params(
         self,
-        axs,
-    ):
+        axs: Any,
+    ) -> None:
         pass
 
     ## core functionality
@@ -76,11 +84,11 @@ class BaseMCMCRoutine:
         y_values: list | numpy.ndarray,
         likelihood_sigma: list | numpy.ndarray,
         initial_params: tuple[float, ...],
-        prior_kde: callable = None,
+        prior_kde: Callable | None = None,
         plot_posterior_kde: bool = False,
         data_label: str | None = None,
         fitted_param_labels: list[str] = [],
-    ):
+    ) -> None:
         self.routine_name = routine_name
         self.output_directory = output_directory
         self.x_values = numpy.asarray(x_values)
@@ -103,7 +111,7 @@ class BaseMCMCRoutine:
 
     def _validate_inputs(
         self,
-    ):
+    ) -> None:
         if not isinstance(self.x_values, (list, numpy.ndarray)):
             raise ValueError(f"`x_values` should either be a list or array of values.")
         if not isinstance(self.y_values, (list, numpy.ndarray)):
@@ -128,7 +136,7 @@ class BaseMCMCRoutine:
         num_walkers_per_param: int = 10,
         num_steps: int = 1e4,
         burn_in_steps: int = 3e3,
-    ):
+    ) -> None:
         if not numpy.all(self._get_valid_params_mask(self.initial_params, verbose=True)):
             raise ValueError(f"Initial guess is invalid!")
         print("Estimating the posterior...")
@@ -188,8 +196,8 @@ class BaseMCMCRoutine:
 
     def _log_posterior(
         self,
-        param_vectors,
-    ):
+        param_vectors: numpy.ndarray,
+    ) -> numpy.ndarray:
         lp_values = self._log_prior(param_vectors)
         valid_prior_mask = numpy.isfinite(lp_values)
         ll_values = numpy.full_like(lp_values, -numpy.inf)
@@ -198,8 +206,8 @@ class BaseMCMCRoutine:
 
     def _log_prior(
         self,
-        param_vectors,
-    ):
+        param_vectors: numpy.ndarray,
+    ) -> numpy.ndarray:
         valid_params_mask = self._get_valid_params_mask(param_vectors)
         num_local_walkers = param_vectors.shape[0]
         lp_values = numpy.full(num_local_walkers, -numpy.inf)
@@ -214,8 +222,8 @@ class BaseMCMCRoutine:
 
     def _log_likelihood(
         self,
-        param_vectors,
-    ):
+        param_vectors: numpy.ndarray,
+    ) -> numpy.ndarray:
         param_vectors = numpy.atleast_2d(param_vectors)
         num_local_walkers = param_vectors.shape[0]
         valid_params_mask = self._get_valid_params_mask(param_vectors)
@@ -240,7 +248,7 @@ class BaseMCMCRoutine:
             raise
         return ll_values
 
-    def _check_chain_convergence(self, mcmc_sampler) -> dict:
+    def _check_chain_convergence(self, mcmc_sampler: emcee.EnsembleSampler) -> dict:
         """
         Run lightweight convergence diagnostics on the *raw* emcee chain.
         Reports (a) acceptance fractions, (b) integrated autocorrelation times tau,
@@ -315,21 +323,21 @@ class BaseMCMCRoutine:
 
     def _make_plots(
         self,
-    ):
+    ) -> None:
         plot_chain_evolution.PlotChainEvolution(self).plot()
         plot_model_posteriors.PlotModelPosteriors(self).plot()
         plot_model_fits.PlotModelFits(self).plot()
 
     def _save_posterior_samples(
         self,
-    ):
-        fitted_posterior_path = io_manager.combine_file_path_parts(
+    ) -> None:
+        fitted_posterior_path = manage_io.combine_file_path_parts(
             [self.output_directory, f"{self.routine_name}_fitted_posterior_samples.npy"],
         )
-        output_posterior_path = io_manager.combine_file_path_parts(
+        output_posterior_path = manage_io.combine_file_path_parts(
             [self.output_directory, f"{self.routine_name}_output_posterior_samples.npy"],
         )
-        log_likelihood_path = io_manager.combine_file_path_parts(
+        log_likelihood_path = manage_io.combine_file_path_parts(
             [self.output_directory, f"{self.routine_name}_fitted_log_likelihoods.npy"],
         )
         numpy.save(fitted_posterior_path, self.fitted_posterior_samples)

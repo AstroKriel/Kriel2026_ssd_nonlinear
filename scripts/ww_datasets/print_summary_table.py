@@ -1,15 +1,18 @@
 ## { SCRIPT
 
 ##
-## === DEPENDENCIES ===
+## === DEPENDENCIES
 ##
 
+## stdlib
 from pathlib import Path
 import math
-from jormi.ww_io import json_files
+
+## personal
+from jormi.ww_io import json_io
 
 ##
-## === HELPER FUNCTIONS ===
+## === HELPER FUNCTIONS
 ##
 
 def sci_basis(v: float) -> tuple[float, int]:
@@ -126,7 +129,7 @@ def sims_at_res(count: int, Nres: int) -> str:
   """Return 'count × Nres' if count>1, else 'Nres' (LaTeX-friendly)."""
   return f"{count}\\,$\\times$\\,{Nres}" #if count > 1 else f"{Nres}"
 
-def build_table(dataset: dict) -> str:
+def build_table(dataset: dict[str, dict]) -> str:
 
   rows = []
   for _, suite_stats in dataset.items():
@@ -156,14 +159,14 @@ def build_table(dataset: dict) -> str:
   return "\n\n".join(rows)
 
 ##
-## === MAIN PROGRAM ===
+## === MAIN PROGRAM
 ##
 
-def main():
+def main() -> None:
   script_dir = Path(__file__).parent
   dataset_path = (script_dir / ".." / ".." / "datasets" / "summary_v2.json").resolve()
-  dataset = json_files.read_json_file_into_dict(dataset_path, verbose=False)
-  def sort_key(item):
+  dataset = json_io.read_json_file_into_dict(dataset_path, verbose=False)
+  def sort_key(item: tuple[str, dict]) -> tuple[float, float, int]:
     s = item[1]
     # Use target inputs for ordering, then resolution
     mach = float(s["input"]["target_Mach"])
@@ -175,7 +178,7 @@ def main():
   print(table_tex)
 
 ##
-## === ENTRY POINT ===
+## === ENTRY POINT
 ##
 
 if __name__ == "__main__":

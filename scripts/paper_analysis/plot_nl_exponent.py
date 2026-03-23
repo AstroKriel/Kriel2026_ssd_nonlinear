@@ -1,48 +1,47 @@
 ## { SCRIPT
 
 ##
-## === DEPENDENCIES ===
+## === DEPENDENCIES
 ##
 
+## stdlib
 from pathlib import Path
-from matplotlib.colors import LinearSegmentedColormap
-from jormi.ww_io import io_manager, json_files
-from jormi.ww_plots import plot_manager, plot_styler, annotate_axis, add_color
+
+## third-party
+
+## personal
+from jormi.ww_io import manage_io, json_io
+from jormi.ww_plots import manage_plots, style_plots, annotate_axis, add_color
+from jormi.ww_plots.color_palettes import SequentialPalette
 
 ##
-## === MAIN PROGRAM ===
+## === MAIN PROGRAM
 ##
 
 
-def main():
+def main() -> None:
     ## define paths
     script_dir = Path(__file__).parent
     figures_dir = (script_dir / ".." / ".." / "figures").resolve()
-    io_manager.init_directory(figures_dir)
+    manage_io.init_directory(figures_dir)
     fig_path = figures_dir / "nl_exponent.pdf"
     dataset_path = (script_dir / ".." / ".." / "datasets" / "summary.json").resolve()
-    dataset = json_files.read_json_file_into_dict(dataset_path)
+    dataset = json_io.read_json_file_into_dict(dataset_path)
     ## setup figure
-    plot_styler.apply_theme_globally()
-    fig, ax = plot_manager.create_figure()
+    style_plots.set_theme()
+    fig, ax = manage_plots.create_figure()
     ## define custom colormap
-    custom_cmap = LinearSegmentedColormap.from_list(
-        name="black-green",
-        colors=["#68287d", "#d0a7c7", "#f2f0e0", "#d5e370", "#275b0e"],
-        N=256,
-    )
-    cmap, norm = add_color.create_cmap(
-        cmap_name=custom_cmap,
-        vmin=1.0,
-        vmax=2.0,
+    palette = SequentialPalette.from_name(
+        palette_name="purple-white-green",
+        value_range=(1.0, 2.0),
     )
     ## loop over and plot each ensemble-averaged simulation suite
     for suite_name, suite_stats in dataset.items():
         print("Looking at:", suite_name)
-        sim_path = (script_dir / ".." / ".." / "datasets" / "backup" / f"{suite_name}v1" / "dataset.json").resolve()
-        sim_data = json_files.read_json_file_into_dict(sim_path)
-        target_Mach = sim_data["plasma_params"]["target_Mach"]
-        target_Re = sim_data["plasma_params"]["target_Re"]
+        sim_path = (script_dir / ".." / ".." / "datasets" / "sims" / f"{suite_name}v1" / "sim_data.json").resolve()
+        sim_data = json_io.read_json_file_into_dict(sim_path)
+        target_Mach = sim_data["details"]["target_Mach"]
+        target_Re = sim_data["details"]["target_Re"]
         dataset[suite_name]["input"]["target_Mach"] = target_Mach
         dataset[suite_name]["input"]["target_Re"] = target_Re
         ## extract measured stats
@@ -50,7 +49,7 @@ def main():
         log10_Re = suite_stats["measured"]["log10_Re"]
         p_nl = suite_stats["measured"]["p_nl"]
         ## tweak plot params
-        color = cmap(norm(p_nl["p50"]))
+        color = palette.mpl_cmap(palette.mpl_norm(p_nl["p50"]))
         if "288" in suite_name:
             marker = "o"
             zorder = 1
@@ -82,20 +81,19 @@ def main():
             capsize=3,
             zorder=zorder,
         )
-    json_files.save_dict_to_json_file(str(dataset_path).replace(".json", "_v2.json"), dataset)
+    json_io.save_dict_to_json_file(str(dataset_path).replace(".json", "_v2.json"), dataset)
     ## label and save
-    ax.set_xlim([-1.5, 1.0])
-    ax.set_ylim([2.95, 3.8])
+    ax.set_xlim((-1.5, 1.0))
+    ax.set_ylim((2.95, 3.8))
     ax.axvline(x=0, ls="--", color="black", lw=1.5, zorder=5)
     ax.set_xlabel(r"$\log_{10}(\mathcal{M})$")
     ax.set_ylabel(r"$\log_{10}(\mathrm{Re})$")
-    cbar = add_color.add_cbar_from_cmap(
+    cbar = add_color.add_colorbar(
         ax=ax,
-        cmap=cmap,
-        norm=norm,
+        palette=palette,
         label=r"$p_\mathrm{nl}$",
-        side="top",
-        fontsize=24,
+        cbar_side="top",
+        label_size=24,
     )
     cbar_ticks = [1.0, 1.25, 1.5, 1.75, 2.0]
     cbar.set_ticks(cbar_ticks)
@@ -107,16 +105,16 @@ def main():
         colors=["k", "k", "k"],
         marker_size=8,
         line_width=1.5,
-        fontsize=16,
+        text_size=16,
         text_color="k",
         position="upper left",
         anchor=(0.0, 0.95),
     )
-    plot_manager.save_figure(fig, fig_path)
+    manage_plots.save_figure(fig, fig_path)
 
 
 ##
-## === ENTRY POINT ===
+## === ENTRY POINT
 ##
 
 if __name__ == "__main__":

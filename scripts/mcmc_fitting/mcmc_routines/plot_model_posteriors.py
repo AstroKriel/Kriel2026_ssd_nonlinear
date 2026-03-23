@@ -1,25 +1,30 @@
 ## { MODULE
 
 ##
-## === DEPENDENCIES ===
+## === DEPENDENCIES
 ##
 
+## stdlib
+from typing import Any, Callable, NamedTuple
+
+## third-party
 import numpy
-from typing import NamedTuple
-from jormi.utils import list_utils
-from jormi.ww_io import io_manager
-from jormi.ww_data import compute_stats
-from jormi.ww_plots import plot_manager, add_annotations
+
+## personal
+from jormi import ww_lists
+from jormi.ww_io import manage_io
+from jormi.ww_arrays import compute_array_stats
+from jormi.ww_plots import manage_plots, annotate_axis
 
 ##
-## === HELPER DATA CLASS ===
+## === HELPER DATA CLASS
 ##
 
 
 class KDEProjectionParams(
         NamedTuple, ):
     posterior_samples: numpy.ndarray
-    posterior_kde: callable
+    posterior_kde: Callable
     param_ranges: list[tuple]
     col_index: int
     row_index: int
@@ -28,7 +33,7 @@ class KDEProjectionParams(
 
 
 ##
-## === PLOTTING ROUTINE ===
+## === PLOTTING ROUTINE
 ##
 
 
@@ -36,8 +41,8 @@ class PlotModelPosteriors:
 
     def __init__(
         self,
-        mcmc_routine,
-    ):
+        mcmc_routine: Any,
+    ) -> None:
         self.output_directory = mcmc_routine.output_directory
         self.routine_name = mcmc_routine.routine_name
         self.num_params = mcmc_routine.num_params
@@ -53,7 +58,7 @@ class PlotModelPosteriors:
 
     def plot(
         self,
-    ):
+    ) -> None:
         self._plot_posteriors(
             posterior_samples=self.fitted_posterior_samples,
             posterior_kde=self.fitted_posterior_kde,
@@ -74,12 +79,12 @@ class PlotModelPosteriors:
 
     def _plot_posteriors(
         self,
-        posterior_samples,
-        posterior_kde,
-        param_labels,
-        fig_name,
-    ):
-        fig, axs = plot_manager.create_figure(
+        posterior_samples: numpy.ndarray,
+        posterior_kde: Callable,
+        param_labels: list[str],
+        fig_name: str,
+    ) -> None:
+        fig, axs = manage_plots.create_figure(
             num_cols=self.num_params,
             num_rows=self.num_params,
             axis_shape=(5, 5),
@@ -99,24 +104,24 @@ class PlotModelPosteriors:
         self._annotate_plot(axs, param_ranges, param_labels)
         if self.plot_posterior_kde:
             self._plot_kde_projections(axs, posterior_samples, posterior_kde, param_ranges)
-        file_path = io_manager.combine_file_path_parts([self.output_directory, fig_name])
-        plot_manager.save_figure(fig, file_path, verbose=True)
+        file_path = manage_io.combine_file_path_parts([self.output_directory, fig_name])
+        manage_plots.save_figure(fig, file_path, verbose=True)
 
     def _plot_pdf(
         self,
-        ax,
-        param_index,
-        posterior_samples,
-        param_labels,
-    ):
-        bin_centers, estimated_pdf = compute_stats.estimate_pdf(
+        ax: Any,
+        param_index: int,
+        posterior_samples: numpy.ndarray,
+        param_labels: list[str],
+    ) -> tuple[float, float]:
+        bin_centers, estimated_pdf = compute_array_stats.estimate_pdf(
             values=posterior_samples[:, param_index],
             num_bins=20,
         )
         ax.step(bin_centers, estimated_pdf, where="mid", lw=2.0, color="black")
         p16, p50, p84 = numpy.percentile(posterior_samples[:, param_index], [16, 50, 84])
         label = f"{param_labels[param_index]} $= {p50:.2f}_{{-{p50-p16:.2f}}}^{{+{p84-p50:.2f}}}$"
-        add_annotations.add_text(
+        annotate_axis.add_text(
             ax=ax,
             x_pos=0.5,
             y_pos=1.05,
@@ -129,7 +134,7 @@ class PlotModelPosteriors:
         if param_index < posterior_samples.shape[1] - 1:
             ax.set_xticklabels([])
         pdf_threshold = 0.05 * numpy.max(estimated_pdf)
-        index_start = list_utils.find_first_crossing(
+        index_start = ww_lists.get_index_of_first_crossing(
             values=estimated_pdf,
             target=pdf_threshold,
             direction="rising",
@@ -138,7 +143,7 @@ class PlotModelPosteriors:
             param_min = bin_centers[0]
             param_max = bin_centers[-1]
         else:
-            index_stop = list_utils.find_first_crossing(
+            index_stop = ww_lists.get_index_of_first_crossing(
                 values=estimated_pdf[index_start:],
                 target=pdf_threshold,
                 direction="falling",
@@ -159,12 +164,12 @@ class PlotModelPosteriors:
 
     def _plot_jpdf(
         self,
-        ax,
-        row_index,
-        col_index,
-        posterior_samples,
-    ):
-        bc_rows, bc_cols, jpdf = compute_stats.estimate_jpdf(
+        ax: Any,
+        row_index: int,
+        col_index: int,
+        posterior_samples: numpy.ndarray,
+    ) -> None:
+        bc_rows, bc_cols, jpdf = compute_array_stats.estimate_jpdf(
             data_x=posterior_samples[:, col_index],
             data_y=posterior_samples[:, row_index],
             num_bins=50,
@@ -184,10 +189,10 @@ class PlotModelPosteriors:
 
     def _annotate_plot(
         self,
-        axs,
-        param_ranges,
-        param_labels,
-    ):
+        axs: Any,
+        param_ranges: list[tuple[float, float]],
+        param_labels: list[str],
+    ) -> None:
         for row_index in range(self.num_params):
             for col_index in range(self.num_params):
                 ax = axs[row_index, col_index]
@@ -208,11 +213,11 @@ class PlotModelPosteriors:
 
     def _plot_kde_projections(
         self,
-        axs,
-        posterior_samples,
-        posterior_kde,
-        param_ranges,
-    ):
+        axs: Any,
+        posterior_samples: numpy.ndarray,
+        posterior_kde: Callable,
+        param_ranges: list[tuple[float, float]],
+    ) -> None:
         for row_index in range(self.num_params):
             for col_index in range(self.num_params):
                 if col_index >= row_index: continue
@@ -238,7 +243,7 @@ class PlotModelPosteriors:
     def _compute_2d_kde_projection(
         self,
         params: KDEProjectionParams,
-    ):
+    ) -> tuple[numpy.ndarray, numpy.ndarray, numpy.ndarray]:
         marginalized_param_indices = [
             param_index for param_index in range(self.num_params)
             if (param_index != params.col_index) and (param_index != params.row_index)

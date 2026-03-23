@@ -1,17 +1,21 @@
 ## { MODULE
 
 ##
-## === DEPENDENCIES ===
+## === DEPENDENCIES
 ##
 
+## stdlib
+from typing import Any
+
+## third-party
 import numpy
 
 ##
-## === HELPER FUNCTIONS ===
+## === HELPER FUNCTIONS
 ##
 
 
-def plot_param_percentiles(ax, samples, orientation):
+def plot_param_percentiles(ax: Any, samples: numpy.ndarray, orientation: str) -> None:
     p16, p50, p84 = numpy.percentile(samples, [16, 50, 84])
     if "h" in orientation.lower():
         ax_line = ax.axhline

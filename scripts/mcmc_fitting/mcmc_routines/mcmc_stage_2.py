@@ -4,20 +4,27 @@
 ## === DEPENDENCIES
 ##
 
+## stdlib
+from typing import Any, Callable
+
+## third-party
 import numpy
-from typing import Callable
 from scipy.ndimage import gaussian_filter1d
-from jormi.utils import list_utils
-from . import base_mcmc
+
+## personal
+from jormi import ww_lists
+
+## local
+from . import mcmc_base
 from . import mcmc_utils
 
 ##
-## === UNIFIED STAGE 2 MCMC FITTER ===
+## === UNIFIED STAGE 2 MCMC FITTER
 ##
 
 
 class Stage2MCMCRoutine(
-        base_mcmc.BaseMCMCRoutine, ):
+        mcmc_base.BaseMCMCRoutine, ):
 
     def __init__(
         self,
@@ -31,7 +38,7 @@ class Stage2MCMCRoutine(
         plot_posterior_kde: bool = True,
         fixed_nl_exponent: float | None = None,
         routine_name: str = "stage2",
-    ):
+    ) -> None:
         assert len(initial_params) == 4, (
             "Stage 2 MCMC routine expects 4 initial params: log10(E_init), log10(E_sat), gamma_exp, and t_nl"
         )
@@ -71,10 +78,10 @@ class Stage2MCMCRoutine(
 
     def _define_constraints(
         self,
-        time_values,
-        ave_energy_values,
-        max_num_bins=100,
-    ):
+        time_values: list | numpy.ndarray,
+        ave_energy_values: list | numpy.ndarray,
+        max_num_bins: int = 100,
+    ) -> float:
         self.max_sim_time = numpy.max(time_values)
         if len(time_values) > max_num_bins:
             time_bin_edges = numpy.linspace(time_values.min(), time_values.max(), max_num_bins + 1)
@@ -96,13 +103,13 @@ class Stage2MCMCRoutine(
             numpy.gradient(numpy.log10(used_ave_energy_values), used_time_values),
             sigma=2,
         )
-        max_sat_time_index = list_utils.find_first_crossing(values=dlny_dt, target=0)
+        max_sat_time_index = ww_lists.get_index_of_first_crossing(values=dlny_dt, target=0)
         self.max_sat_time = used_time_values[max_sat_time_index]
         ## define max time to transition into nonlinear phase
         ## note, make sure this happens before the saturated phase
         dy_dt = numpy.gradient(used_ave_energy_values, used_time_values)
         target_dy_dt = 0.5 * numpy.max(dy_dt[:max_sat_time_index])
-        max_nl_time_index = list_utils.find_first_crossing(
+        max_nl_time_index = ww_lists.get_index_of_first_crossing(
             values=dy_dt[:max_sat_time_index],
             target=target_dy_dt,
         )
@@ -113,8 +120,8 @@ class Stage2MCMCRoutine(
 
     def _model(
         self,
-        param_vectors,
-    ):
+        param_vectors: numpy.ndarray,
+    ) -> numpy.ndarray:
         param_vectors = numpy.atleast_2d(param_vectors)  # (N, P)
         ## output dimensions
         num_local_walkers = param_vectors.shape[0]  # N
@@ -160,9 +167,9 @@ class Stage2MCMCRoutine(
 
     def _get_valid_params_mask(
         self,
-        param_vectors,
-        verbose=False,
-    ):
+        param_vectors: numpy.ndarray,
+        verbose: bool = False,
+    ) -> numpy.ndarray:
         param_vectors = numpy.atleast_2d(param_vectors)
         num_local_walkers = param_vectors.shape[0]
         if self.fixed_nl_exponent is None:
@@ -206,16 +213,16 @@ class Stage2MCMCRoutine(
 
     def _get_kde_params(
         self,
-        param_vectors,
-    ):
+        param_vectors: numpy.ndarray,
+    ) -> numpy.ndarray:
         param_vectors = numpy.atleast_2d(param_vectors)
         ## ignore the transition times implicity gives them a unifrom prior
         return numpy.asarray(param_vectors[:, :3])
 
     def _annotate_fitted_params(
         self,
-        axs,
-    ):
+        axs: Any,
+    ) -> None:
         sat_energy_samples = 10**self.fitted_posterior_samples[:, 1]
         nl_start_time_samples = self.fitted_posterior_samples[:, 3]
         sat_start_time_samples = self.fitted_posterior_samples[:, 4]
@@ -246,7 +253,7 @@ class Stage2MCMCRoutine_free(
     def __init__(
         self,
         **kwargs,
-    ):
+    ) -> None:
         super().__init__(
             fixed_nl_exponent=None,
             routine_name="stage2_free",
@@ -260,7 +267,7 @@ class Stage2MCMCRoutine_linear(
     def __init__(
         self,
         **kwargs,
-    ):
+    ) -> None:
         super().__init__(
             fixed_nl_exponent=1.0,
             routine_name="stage2_linear",
@@ -274,7 +281,7 @@ class Stage2MCMCRoutine_quadratic(
     def __init__(
         self,
         **kwargs,
-    ):
+    ) -> None:
         super().__init__(
             fixed_nl_exponent=2.0,
             routine_name="stage2_quadratic",

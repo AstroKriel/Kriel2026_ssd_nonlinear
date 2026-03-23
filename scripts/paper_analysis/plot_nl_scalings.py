@@ -1,18 +1,24 @@
 ## { SCRIPT
 
 ##
-## === DEPENDENCIES ===
+## === DEPENDENCIES
 ##
 
-import numpy
+## stdlib
 from pathlib import Path
-from matplotlib.colors import LinearSegmentedColormap
-from jormi.ww_io import io_manager, json_files
-from jormi.ww_data import fit_data
-from jormi.ww_plots import plot_manager, plot_styler, annotate_axis, add_color
+
+## third-party
+import numpy
+
+## personal
+from jormi.ww_io import manage_io, json_io
+from jormi.ww_data import fit_series
+from jormi.ww_plots import manage_plots, style_plots, annotate_axis, add_color
+from jormi.ww_data.series_types import GaussianSeries
+from jormi.ww_plots.color_palettes import SequentialPalette
 
 ##
-## === GLOBAL PARAMS ===
+## === GLOBAL PARAMS
 ##
 
 X_MIN, X_MAX = -1.5, 1.0
@@ -44,11 +50,11 @@ def generate_line(
     y_start: float,
     slope: float,
     line_length: float,
-    domain_bounds: float,
+    domain_bounds: tuple[float, float, float, float],
     domain_aspect_ratio: float = 1.0,
-    num_points: float = 2,
+    num_points: int = 2,
     direction: float = 1,
-):
+) -> tuple[numpy.ndarray, numpy.ndarray]:
     x_min, x_max, y_min, y_max = domain_bounds
     data_aspect_ratio = (x_max - x_min) / (y_max - y_min)
     scale_x = 1.0
@@ -65,34 +71,28 @@ def generate_line(
 
 
 ##
-## === MAIN PROGRAM ===
+## === MAIN PROGRAM
 ##
 
 
-def main():
+def main() -> None:
     ## define paths
     script_dir = Path(__file__).parent
     figures_dir = (script_dir / ".." / ".." / "figures").resolve()
-    io_manager.init_directory(figures_dir)
+    manage_io.init_directory(figures_dir)
     fig_path = figures_dir / "nl_scalings.pdf"
     dataset_dir = (script_dir / ".." / ".." / "datasets" / "summary.json").resolve()
-    dataset = json_files.read_json_file_into_dict(dataset_dir)
+    dataset = json_io.read_json_file_into_dict(dataset_dir)
     ## setup figure
-    plot_styler.apply_theme_globally()
-    fig, axs = plot_manager.create_figure(num_rows=2)
+    style_plots.set_theme()
+    fig, axs = manage_plots.create_figure(num_rows=2, num_cols=1)
     ## define custom colormap
-    custom_cmap = LinearSegmentedColormap.from_list(
-        name="white-brown",
-        colors=["#fdfdfd", "#f49325", "#010101"],
-        N=256,
+    palette = SequentialPalette.from_name(
+        palette_name="white-brown",
+        value_range=(3.1, 3.7),
+        palette_range=(0.0, 0.7),
     )
-    cmap, norm = add_color.create_cmap(
-        cmap_name=custom_cmap,
-        vmin=3.1,
-        vmax=3.7,
-        cmax=0.7,
-    )
-    model_color = cmap(0.7)
+    model_color = palette.mpl_cmap(0.7)
     ## initialise data we want to fit to
     coords_to_fit = []
     ## loop over and plot each ensemble-averaged simulation suite
@@ -104,7 +104,7 @@ def main():
         log10_alpha_nl = suite_stats["measured"]["log10_alpha_nl"]
         log10_nl_duration_normed_by_t0 = suite_stats["measured"]["log10_nl_duration_normed_by_t0"]
         ## define look of marker
-        marker_color = cmap(norm(log10_Re["p50"]))
+        marker_color = palette.mpl_cmap(palette.mpl_norm(log10_Re["p50"]))
         if "288" in suite_name:
             marker = "o"
             zorder = 1
@@ -181,13 +181,15 @@ def main():
     ## fit and overlay scalings
     x_values = numpy.linspace(-2, 2, 100)
     ## subsonic growth rate
-    subsonic_fit_results = fit_data.fit_line_with_fixed_slope(
-        x_values=[coord[0] for coord in coords_to_fit if coord[0] < 0],
-        y_values=[coord[1] for coord in coords_to_fit if coord[0] < 0],
-        slope=3,
+    subsonic_fit_results = fit_series.fit_line_with_fixed_slope(
+        GaussianSeries(
+            x_values=numpy.array([coord[0] for coord in coords_to_fit if coord[0] < 0]),
+            y_values=numpy.array([coord[1] for coord in coords_to_fit if coord[0] < 0]),
+        ),
+        fixed_slope=3,
     )
-    subsonic_a1_ave = subsonic_fit_results["intercept"]["best"]
-    subsonic_a1_std = subsonic_fit_results["intercept"]["std"]
+    subsonic_a1_ave = subsonic_fit_results.intercept.value
+    subsonic_a1_std = subsonic_fit_results.intercept.sigma
     subsonic_label = format_fit_label(
         intercept_best=subsonic_a1_ave,
         intercept_std=subsonic_a1_std,
@@ -201,14 +203,16 @@ def main():
         linewidth=1.5,
     )
     ## supersonic growth rate
-    supersonic_fit_results = fit_data.fit_1d_linear_model(
-        x_values=[coord[0] for coord in coords_to_fit if -0.2 < coord[0]],
-        y_values=[coord[1] for coord in coords_to_fit if -0.2 < coord[0]],
+    supersonic_fit_results = fit_series.fit_linear_model(
+        GaussianSeries(
+            x_values=numpy.array([coord[0] for coord in coords_to_fit if -0.2 < coord[0]]),
+            y_values=numpy.array([coord[1] for coord in coords_to_fit if -0.2 < coord[0]]),
+        ),
     )
-    supersonic_a0_ave = supersonic_fit_results["slope"]["best"]
-    supersonic_a0_std = supersonic_fit_results["slope"]["std"]
-    supersonic_a1_ave = supersonic_fit_results["intercept"]["best"]
-    supersonic_a1_std = supersonic_fit_results["intercept"]["std"]
+    supersonic_a0_ave = supersonic_fit_results.slope.value
+    supersonic_a0_std = supersonic_fit_results.slope.sigma
+    supersonic_a1_ave = supersonic_fit_results.intercept.value
+    supersonic_a1_std = supersonic_fit_results.intercept.sigma
     supersonic_label = rf"$10^{{{supersonic_a1_ave:.1f} \pm {supersonic_a1_std:.1f}}}\,\mathcal{{M}}^{{{supersonic_a0_ave:.1f} \pm {supersonic_a0_std:.1f}}}$"
     annotate_axis.overlay_curve(
         ax=axs[0],
@@ -219,14 +223,16 @@ def main():
         zorder=3,
     )
     ## universal duration
-    duration_fit_results = fit_data.fit_line_with_fixed_slope(
-        x_values=[coord[0] for coord in coords_to_fit],
-        y_values=[coord[2] for coord in coords_to_fit],
-        y_sigmas=[coord[3] for coord in coords_to_fit],
-        slope=0,
+    duration_fit_results = fit_series.fit_line_with_fixed_slope(
+        GaussianSeries(
+            x_values=numpy.array([coord[0] for coord in coords_to_fit]),
+            y_values=numpy.array([coord[2] for coord in coords_to_fit]),
+            y_sigmas=numpy.array([coord[3] for coord in coords_to_fit]),
+        ),
+        fixed_slope=0,
     )
-    duration_a1_ave = duration_fit_results["intercept"]["best"]
-    duration_a1_std = duration_fit_results["intercept"]["std"]
+    duration_a1_ave = duration_fit_results.intercept.value
+    duration_a1_std = duration_fit_results.intercept.sigma
     axs[1].axhline(y=duration_a1_ave, color="black", linestyle="-", linewidth=1.5, zorder=-1)
     duration_label = format_fit_label(
         intercept_best=duration_a1_ave,
@@ -275,16 +281,12 @@ def main():
         ],
         marker_size=8,
         line_width=1.5,
-        fontsize=16,
+        text_size=16,
         text_color="k",
-        position="lower right",
-        anchor=(1.0, 0.025),
+        anchor_at_corner="lower right",
+        anchor_point=(1.0, 0.025),
         num_cols=1,
-        text_padding=0.5,
-        label_spacing=0.625,
-        enable_frame=True,
-        face_color="white",
-        edge_color="white",
+        spacing=0.625,
         frame_alpha=0.75,
     )
     annotate_axis.add_custom_legend(
@@ -303,12 +305,12 @@ def main():
         ],
         marker_size=8,
         line_width=1.5,
-        fontsize=16,
+        text_size=16,
         text_color="k",
-        position="upper left",
-        anchor=(0.0, 0.99),
+        anchor_at_corner="upper left",
+        anchor_point=(0.0, 0.99),
         num_cols=1,
-        text_padding=0.5,
+        spacing=0.5,
     )
     # ## schleicher
     # guide_x0 = 0.3
@@ -344,14 +346,13 @@ def main():
     #     fontsize=20,
     # )
     ## add colorbar
-    cbar = add_color.add_cbar_from_cmap(
+    cbar = add_color.add_colorbar(
         ax=axs[0],
-        cmap=cmap,
-        norm=norm,
+        palette=palette,
         label=r"$\log_{10}(\mathrm{Re})$",
-        side="top",
-        cbar_padding=0.015,
-        fontsize=24,
+        cbar_side="top",
+        cbar_pad=0.015,
+        label_size=24,
     )
     cbar_ticks = [3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7]
     cbar.set_ticks(cbar_ticks)
@@ -363,19 +364,18 @@ def main():
         colors=["k"] * 3,
         marker_size=8,
         line_width=1.5,
-        fontsize=16,
+        text_size=16,
         text_color="k",
-        position="upper left",
-        anchor=(-0.05, 1.0),
+        anchor_at_corner="upper left",
+        anchor_point=(0.0, 1.0),
         num_cols=3,
-        text_padding=0.0,
-        column_spacing=0.0,
+        spacing=0.0,
     )
-    plot_manager.save_figure(fig, fig_path)
+    manage_plots.save_figure(fig, fig_path)
 
 
 ##
-## === ENTRY POINT ===
+## === ENTRY POINT
 ##
 
 if __name__ == "__main__":

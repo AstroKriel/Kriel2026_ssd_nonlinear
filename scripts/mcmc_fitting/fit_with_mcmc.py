@@ -1,13 +1,20 @@
 ## { SCRIPT
 
 ##
-## === DEPENDENCIES ===
+## === DEPENDENCIES
 ##
 
-import numpy
+## stdlib
 import argparse
 from pathlib import Path
-from jormi.ww_io import io_manager, json_files
+
+## third-party
+import numpy
+
+## personal
+from jormi.ww_io import manage_io, json_io
+
+## local
 from mcmc_routines.mcmc_stage_1 import Stage1MCMCRoutine
 from mcmc_routines.mcmc_stage_2 import Stage2MCMCRoutine_free
 from mcmc_routines.mcmc_stage_2 import Stage2MCMCRoutine_linear
@@ -15,23 +22,23 @@ from mcmc_routines.mcmc_stage_2 import Stage2MCMCRoutine_quadratic
 from mcmc_routines.plot_final_fits import PlotFinalFits
 
 ##
-## === HELPER FUNCTIONS ===
+## === HELPER FUNCTIONS
 ##
 
 
 def compute_median_params_from_kde(
     kde,
-    num_samples=10000,
-):
+    num_samples: int = 10000,
+) -> tuple[float, ...]:
     samples = kde.resample(num_samples)
     return tuple(numpy.median(samples, axis=1))
 
 
 def compute_binned_data(
-    x_values,
-    y_values,
-    num_bins,
-):
+    x_values: numpy.ndarray,
+    y_values: numpy.ndarray,
+    num_bins: int,
+) -> dict[str, numpy.ndarray]:
     x_bin_edges = numpy.linspace(0, numpy.max(x_values), num_bins + 1)
     x_bin_centers = 0.5 * (x_bin_edges[1:] + x_bin_edges[:-1])
     x_bin_indices = numpy.digitize(x_values, x_bin_edges) - 1
@@ -63,11 +70,11 @@ def compute_binned_data(
 
 
 ##
-## === MAIN PROGRAM ===
+## === MAIN PROGRAM
 ##
 
 
-def main():
+def main() -> None:
     ## collect user arguments
     parser = argparse.ArgumentParser(description="Run MCMC fitting routine.")
     parser.add_argument("-data_directory", type=str, required=True)
@@ -93,14 +100,14 @@ def main():
         f"Fitting the {model_name}-model to the nonlinear (backreaction) phase with {binning_notice}.",
     )
     ## read in magnetic energy evolution
-    output_directory = io_manager.combine_file_path_parts([data_directory, model_name, binning_tag])
-    io_manager.init_directory(output_directory)
-    data_filepath = io_manager.combine_file_path_parts([data_directory, "dataset.json"])
-    data_dict = json_files.read_json_file_into_dict(data_filepath)
+    output_directory = manage_io.combine_file_path_parts([data_directory, model_name, binning_tag])
+    manage_io.init_directory(output_directory)
+    data_filepath = manage_io.combine_file_path_parts([data_directory, "sim_data.json"])
+    data_dict = json_io.read_json_file_into_dict(data_filepath)
     ## subset the simulation domain: roughly half of the data points should make up the growth phase
-    full_time_values = numpy.array(data_dict["measured_data"]["time_values"])
-    full_magnetic_energy = numpy.array(data_dict["measured_data"]["magnetic_energy_values"])
-    t_turb = data_dict["plasma_params"]["t_turb"]
+    full_time_values = numpy.array(data_dict["time_series"]["time"])
+    full_magnetic_energy = numpy.array(data_dict["time_series"]["Emag"])
+    t_turb = data_dict["details"]["t_0"]
     max_total_time = numpy.max(full_time_values)
     max_subset_time = max_total_time  # initialise
     max_sat_fraction_of_subset_time = 0.35
@@ -190,7 +197,7 @@ def main():
 
 
 ##
-## === ENTRY POINT ===
+## === ENTRY POINT
 ##
 
 if __name__ == "__main__":

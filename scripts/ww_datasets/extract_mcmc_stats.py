@@ -1,15 +1,24 @@
 ## { MODULE
 
-import numpy
+##
+## === DEPENDENCIES
+##
+
+## stdlib
 from pathlib import Path
-from jormi.ww_io import io_manager, json_files
-from jormi.utils import list_utils
+
+## third-party
+import numpy
+
+## personal
+from jormi.ww_io import manage_io, json_io
+from jormi import ww_lists
 
 
 def extract_from_mcmc_data(
     samples: numpy.ndarray,
     model: str,
-):
+) -> dict[str, numpy.ndarray]:
     init_energy = 10**samples[:, 0]
     sat_energy = 10**samples[:, 1]
     gamma_exp = samples[:, 2]
@@ -53,8 +62,8 @@ class EnsembleAverager:
 
     def __init__(
         self,
-        sim_directories,
-    ):
+        sim_directories: list,
+    ) -> None:
         self.sim_directories = sim_directories
         self.fit_summary = {}
         self.sim_params = None
@@ -62,7 +71,7 @@ class EnsembleAverager:
 
     def run(
         self,
-    ):
+    ) -> dict[str, dict]:
         ## for each fit-model
         for model_type in self.model_types:
             print("Processing model-fit:", model_type)
@@ -73,15 +82,15 @@ class EnsembleAverager:
             for sim_directory in self.sim_directories:
                 print("Looking at:", sim_directory)
                 ## load sim meta data once
-                sim_data_path = io_manager.combine_file_path_parts([sim_directory, "dataset.json"])
-                if not io_manager.does_file_exist(sim_data_path):
-                    print(f"Missing dataset.json for: {sim_directory}")
+                sim_data_path = manage_io.combine_file_path_parts([sim_directory, "sim_data.json"])
+                if not manage_io.does_file_exist(sim_data_path):
+                    print(f"Missing sim_data.json for: {sim_directory}")
                     continue
-                sim_data = json_files.read_json_file_into_dict(sim_data_path)
-                target_Mach = sim_data["plasma_params"]["target_Mach"]
-                target_Re = sim_data["plasma_params"]["target_Re"]
+                sim_data = json_io.read_json_file_into_dict(sim_data_path)
+                target_Mach = sim_data["details"]["target_Mach"]
+                target_Re = sim_data["details"]["target_Re"]
                 for binning_type in self.binning_types:
-                    mcmc_data_path = io_manager.combine_file_path_parts(
+                    mcmc_data_path = manage_io.combine_file_path_parts(
                         [
                             sim_directory,
                             model_type,
@@ -89,7 +98,7 @@ class EnsembleAverager:
                             f"stage2_{model_type}_fitted_posterior_samples.npy",
                         ],
                     )
-                    if not io_manager.does_file_exist(mcmc_data_path):
+                    if not manage_io.does_file_exist(mcmc_data_path):
                         print(
                             f"Simulation does not have mcmc data fitted with `{model_type}` and `{binning_type}`\n",
                         )
@@ -108,14 +117,14 @@ class EnsembleAverager:
                     ## only extract sim_params once (arbitrarily, from the linear fit)
                     if not self.exracted_data:
                         nu = 0.5 * target_Mach / target_Re
-                        t_turb = sim_data["plasma_params"]["t_turb"]
-                        full_time_values = numpy.array(sim_data["measured_data"]["time_values"])
-                        full_Mach_energy = numpy.array(sim_data["measured_data"]["rms_Mach_values"])
+                        t_turb = sim_data["details"]["t_0"]
+                        full_time_values = numpy.array(sim_data["time_series"]["time"])
+                        full_Mach_energy = numpy.array(sim_data["time_series"]["Mach"])
                         median_nl_start_time = numpy.median(extracted_data["nl_start_time"])
-                        start_index = list_utils.find_first_crossing(full_time_values / t_turb, 5)
-                        end_index = list_utils.find_first_crossing(
-                            full_time_values,
-                            median_nl_start_time,
+                        start_index = ww_lists.get_index_of_first_crossing(values=full_time_values / t_turb, target=5)
+                        end_index = ww_lists.get_index_of_first_crossing(
+                            values=full_time_values,
+                            target=median_nl_start_time,
                         )
                         kinematic_Mach_values = full_Mach_energy[start_index:end_index]
                         kinematic_Re_values = 0.5 * kinematic_Mach_values / nu
@@ -156,12 +165,13 @@ class EnsembleAverager:
         }
 
 
-def main():
+def main() -> None:
     script_dir = Path(__file__).parent
-    output_summary_path = script_dir / "summary_stats.json"
-    base_directory = Path("/scratch/jh2/nk7952/ssd_sims").resolve()
-    all_directories = io_manager.ItemFilter(
-        include_string=["Mach", "Re", "Pm", "Nres"],
+    datasets_dir = (script_dir / ".." / ".." / "datasets").resolve()
+    output_summary_path = datasets_dir / "summary_stats.json"
+    base_directory = datasets_dir / "sims"
+    all_directories = manage_io.ItemFilter(
+        req_include_words=["Mach", "Re", "Pm", "Nres"],
     ).filter(
         directory=base_directory,
     )
@@ -174,7 +184,7 @@ def main():
         ## average over the different simulation instances (at a particular resolution)
         sim_averager = EnsembleAverager(directories_in_suite)
         all_results[sim_suite] = sim_averager.run()
-    json_files.save_dict_to_json_file(output_summary_path, all_results, overwrite=True)
+    json_io.save_dict_to_json_file(output_summary_path, all_results, overwrite=True)
 
 
 if __name__ == "__main__":

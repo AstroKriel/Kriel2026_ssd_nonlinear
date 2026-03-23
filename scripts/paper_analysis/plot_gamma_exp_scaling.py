@@ -1,11 +1,17 @@
 ## { SCRIPT
 
-import numpy
+## stdlib
 from pathlib import Path
-from matplotlib.colors import LinearSegmentedColormap
-from jormi.ww_io import io_manager, json_files
-from jormi.ww_data import fit_data
-from jormi.ww_plots import plot_manager, plot_styler, annotate_axis, add_color
+
+## third-party
+import numpy
+
+## personal
+from jormi.ww_io import manage_io, json_io
+from jormi.ww_data import fit_series
+from jormi.ww_plots import manage_plots, style_plots, annotate_axis, add_color
+from jormi.ww_data.series_types import GaussianSeries
+from jormi.ww_plots.color_palettes import DivergingPalette
 
 x_min, x_max = 3.05, 3.75
 y_min, y_max = -0.4, 0.45
@@ -28,28 +34,22 @@ def format_fit_label(
     return label
 
 
-def main():
+def main() -> None:
     ## define paths
     script_dir = Path(__file__).parent
     figures_dir = (script_dir / ".." / ".." / "figures").resolve()
-    io_manager.init_directory(figures_dir)
+    manage_io.init_directory(figures_dir)
     fig_path = figures_dir / "gamma_exp_scaling.pdf"
     dataset_dir = (script_dir / ".." / ".." / "datasets" / "summary.json").resolve()
-    dataset = json_files.read_json_file_into_dict(dataset_dir)
+    dataset = json_io.read_json_file_into_dict(dataset_dir)
     ## setup figure
-    plot_styler.apply_theme_globally()
-    fig, ax = plot_manager.create_figure()
+    style_plots.set_theme()
+    fig, ax = manage_plots.create_figure()
     ## define custom colormap
-    custom_cmap = LinearSegmentedColormap.from_list(
-        name="white-brown",
-        colors=["#024f92", "#067bf1", "#d4d4d4", "#f65d25", "#A41409"],
-        N=256,
-    )
-    cmap, norm = add_color.create_cmap(
-        cmap_name=custom_cmap,
-        vmin=-1.0,
-        vmid=0,
-        vmax=1.0,
+    palette = DivergingPalette.from_name(
+        palette_name="blue-white-red",
+        value_range=(-1.0, 1.0),
+        mid_value=0.0,
     )
     ## initialise data we want to fit to
     coords_to_fit = []
@@ -61,7 +61,7 @@ def main():
         log10_Re = suite_stats["measured"]["log10_Re"]
         log10_gamma_exp_times_t0 = suite_stats["measured"]["log10_gamma_exp_times_t0"]
         ## tweak plot params
-        color = cmap(norm(log10_Mach["p50"]))
+        color = palette.mpl_cmap(palette.mpl_norm(log10_Mach["p50"]))
         if "288" in suite_name:
             marker = "o"
             zorder = 1
@@ -104,8 +104,8 @@ def main():
             ),
         )
     ## label
-    ax.set_xlim([x_min, x_max])
-    ax.set_ylim([y_min, y_max])
+    ax.set_xlim((x_min, x_max))
+    ax.set_ylim((y_min, y_max))
     x_ticks = [3.1, 3.3, 3.5, 3.7]
     ax.set_xticks(x_ticks)
     ax.set_xticklabels(f"{x_tick:.1f}" for x_tick in x_ticks)
@@ -115,13 +115,15 @@ def main():
     x_values = numpy.linspace(3, 4, 100)
     rotation_bounds = (x_min, x_max, y_min, y_max)
     ## subsonic scaling
-    subsonic_fit_results = fit_data.fit_line_with_fixed_slope(
-        x_values=[coord[1] for coord in coords_to_fit if coord[0] < 0],
-        y_values=[coord[2] for coord in coords_to_fit if coord[0] < 0],
-        slope=0.5,
+    subsonic_fit_results = fit_series.fit_line_with_fixed_slope(
+        GaussianSeries(
+            x_values=numpy.array([coord[1] for coord in coords_to_fit if coord[0] < 0]),
+            y_values=numpy.array([coord[2] for coord in coords_to_fit if coord[0] < 0]),
+        ),
+        fixed_slope=0.5,
     )
-    subsonic_a1_ave = subsonic_fit_results["intercept"]["best"]
-    subsonic_a1_std = subsonic_fit_results["intercept"]["std"]
+    subsonic_a1_ave = subsonic_fit_results.intercept.value
+    subsonic_a1_std = subsonic_fit_results.intercept.sigma
     annotate_axis.overlay_curve(
         ax=ax,
         x_values=x_values,
@@ -134,10 +136,10 @@ def main():
         intercept_std=subsonic_a1_std,
         decimals=2,
     )
-    subsonic_rotation = fit_data.get_line_angle(
+    subsonic_rotation = fit_series.get_line_angle(
         slope=0.5,
         domain_bounds=rotation_bounds,
-        domain_aspect_ratio=6 / 4,
+        aspect_ratio=6 / 4,
     )
     annotate_axis.add_text(
         ax=ax,
@@ -147,16 +149,18 @@ def main():
         x_alignment="center",
         y_alignment="center",
         rotate_deg=subsonic_rotation,
-        font_color=cmap(norm(-1)),
+        text_color=palette.mpl_cmap(palette.mpl_norm(-1.0)),
     )
     ## supersonic scaling
-    supersonic_fit_results = fit_data.fit_line_with_fixed_slope(
-        x_values=[coord[1] for coord in coords_to_fit if 0 < coord[0]],
-        y_values=[coord[2] for coord in coords_to_fit if 0 < coord[0]],
-        slope=1 / 3,
+    supersonic_fit_results = fit_series.fit_line_with_fixed_slope(
+        GaussianSeries(
+            x_values=numpy.array([coord[1] for coord in coords_to_fit if 0 < coord[0]]),
+            y_values=numpy.array([coord[2] for coord in coords_to_fit if 0 < coord[0]]),
+        ),
+        fixed_slope=1 / 3,
     )
-    supersonic_a1_ave = supersonic_fit_results["intercept"]["best"]
-    supersonic_a1_std = supersonic_fit_results["intercept"]["std"]
+    supersonic_a1_ave = supersonic_fit_results.intercept.value
+    supersonic_a1_std = supersonic_fit_results.intercept.sigma
     annotate_axis.overlay_curve(
         ax=ax,
         x_values=x_values,
@@ -169,10 +173,10 @@ def main():
         intercept_std=supersonic_a1_std,
         decimals=2,
     )
-    supersonic_rotation = fit_data.get_line_angle(
+    supersonic_rotation = fit_series.get_line_angle(
         slope=1 / 3.5,
         domain_bounds=rotation_bounds,
-        domain_aspect_ratio=6 / 4,
+        aspect_ratio=6 / 4,
     )
     annotate_axis.add_text(
         ax=ax,
@@ -182,16 +186,15 @@ def main():
         x_alignment="center",
         y_alignment="center",
         rotate_deg=supersonic_rotation,
-        font_color=cmap(norm(1)),
+        text_color=palette.mpl_cmap(palette.mpl_norm(1.0)),
     )
     ## add other labels
-    add_color.add_cbar_from_cmap(
+    add_color.add_colorbar(
         ax=ax,
-        cmap=cmap,
-        norm=norm,
+        palette=palette,
         label=r"$\log_{10}(\mathcal{M})$",
-        side="top",
-        fontsize=24,
+        cbar_side="top",
+        label_size=24,
     )
     annotate_axis.add_custom_legend(
         ax=ax,
@@ -208,14 +211,14 @@ def main():
         colors=["k"] * 3,
         marker_size=8,
         line_width=1.5,
-        fontsize=16,
+        text_size=16,
         text_color="k",
-        position="upper left",
-        anchor=(-0.035, 1.0),
+        anchor_at_corner="upper left",
+        anchor_point=(0.0, 1.0),
         num_cols=2,
-        text_padding=0.0,
+        spacing=0.0,
     )
-    plot_manager.save_figure(fig, fig_path)
+    manage_plots.save_figure(fig, fig_path)
 
 
 if __name__ == "__main__":

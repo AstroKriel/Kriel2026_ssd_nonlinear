@@ -1,19 +1,25 @@
 ## { MODULE
 
 ##
-## === DEPENDENCIES ===
+## === DEPENDENCIES
 ##
 
+## stdlib
+from typing import Any
+
+## third-party
 import numpy
-from . import base_mcmc
+
+## local
+from . import mcmc_base
 from . import mcmc_utils
 
 ##
-## === STAGE 1 MCMC FITTER ===
+## === STAGE 1 MCMC FITTER
 ##
 
 
-class Stage1MCMCRoutine(base_mcmc.BaseMCMCRoutine):
+class Stage1MCMCRoutine(mcmc_base.BaseMCMCRoutine):
 
     def __init__(
         self,
@@ -24,7 +30,7 @@ class Stage1MCMCRoutine(base_mcmc.BaseMCMCRoutine):
         std_log10_energy_values: list | numpy.ndarray,
         initial_params: tuple[float, ...],
         plot_posterior_kde: bool = True,
-    ):
+    ) -> None:
         assert len(
             initial_params,
         ) == 3, ("Stage 1 MCMC routine expects 3 initial params: log10(E_init), gamma_exp, and t_approx")
@@ -48,8 +54,8 @@ class Stage1MCMCRoutine(base_mcmc.BaseMCMCRoutine):
 
     def _model(
         self,
-        param_vectors,
-    ):
+        param_vectors: numpy.ndarray,
+    ) -> numpy.ndarray:
         param_vectors = numpy.atleast_2d(param_vectors)  # (N, P)
         ## output dimensions
         num_local_walkers = param_vectors.shape[0]  # N
@@ -79,9 +85,9 @@ class Stage1MCMCRoutine(base_mcmc.BaseMCMCRoutine):
 
     def _get_valid_params_mask(
         self,
-        param_vectors,
-        verbose=False,
-    ):
+        param_vectors: numpy.ndarray,
+        verbose: bool = False,
+    ) -> numpy.ndarray:
         param_vectors = numpy.atleast_2d(param_vectors)
         num_local_walkers = param_vectors.shape[0]
         log10_init_energy, gamma, transition_time = param_vectors.T
@@ -112,8 +118,8 @@ class Stage1MCMCRoutine(base_mcmc.BaseMCMCRoutine):
 
     def _annotate_fitted_params(
         self,
-        axs,
-    ):
+        axs: Any,
+    ) -> None:
         log10_gamma_samples = self.log10_e * self.fitted_posterior_samples[:, 1]
         transition_time_samples = self.fitted_posterior_samples[:, 2]
         mcmc_utils.plot_param_percentiles(axs[1], log10_gamma_samples, orientation="horizontal")
@@ -126,7 +132,7 @@ class Stage1MCMCRoutine(base_mcmc.BaseMCMCRoutine):
 
     def _get_output_params(
         self,
-    ):
+    ) -> tuple[numpy.ndarray, list[str]]:
         log10_init_energy_samples = self.fitted_posterior_samples[:, 0]
         gamma_samples = self.fitted_posterior_samples[:, 1]
         transition_time_samples = self.fitted_posterior_samples[:, 2]
@@ -147,8 +153,8 @@ class Stage1MCMCRoutine(base_mcmc.BaseMCMCRoutine):
 
     def _annotate_output_params(
         self,
-        axs,
-    ):
+        axs: Any,
+    ) -> None:
         log10_sat_energy_samples = self.output_posterior_samples[:, 1]
         mcmc_utils.plot_param_percentiles(
             axs[0],

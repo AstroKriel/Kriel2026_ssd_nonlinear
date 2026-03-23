@@ -1,15 +1,21 @@
 ## { MODULE
 
 ##
-## === DEPENDENCIES ===
+## === DEPENDENCIES
 ##
 
+## stdlib
+from typing import Any
+
+## third-party
 import numpy
-from jormi.ww_plots import plot_manager
-from jormi.ww_io import io_manager
+
+## personal
+from jormi.ww_plots import manage_plots
+from jormi.ww_io import manage_io
 
 ##
-## === PLOTTING ROUTINE ===
+## === PLOTTING ROUTINE
 ##
 
 
@@ -17,9 +23,9 @@ class PlotModelFits:
 
     def __init__(
         self,
-        mcmc_routine,
+        mcmc_routine: Any,
         num_curves: int = 100,
-    ):
+    ) -> None:
         self.num_curves = num_curves
         self.routine_name = mcmc_routine.routine_name
         self.output_directory = mcmc_routine.output_directory
@@ -35,8 +41,8 @@ class PlotModelFits:
 
     def plot(
         self,
-    ):
-        fig, axs = plot_manager.create_figure(num_rows=3, share_x=True)
+    ) -> None:
+        fig, axs = manage_plots.create_figure(num_rows=3, num_cols=1, share_x=True)
         self._plot_data(axs)
         self._plot_model(axs)
         self._plot_residuals(axs)
@@ -49,13 +55,13 @@ class PlotModelFits:
         axs[2].set_ylabel(r"median residuals")
         axs[2].set_xlabel(r"time")
         fig_name = f"{self.routine_name}_fit.png"
-        fig_file_path = io_manager.combine_file_path_parts([self.output_directory, fig_name])
-        plot_manager.save_figure(fig, fig_file_path, verbose=True)
+        fig_file_path = manage_io.combine_file_path_parts([self.output_directory, fig_name])
+        manage_plots.save_figure(fig, fig_file_path, verbose=True)
 
     def _plot_data(
         self,
-        axs,
-    ):
+        axs: Any,
+    ) -> None:
         dy_dx_values = numpy.gradient(self.y_ave_values, self.x_values)
         style = dict(color="blue", marker="o", ms=5, ls="-", lw=1.0, zorder=3)
         axs[0].errorbar(
@@ -74,8 +80,8 @@ class PlotModelFits:
 
     def _plot_model(
         self,
-        axs,
-    ):
+        axs: Any,
+    ) -> None:
         random_selector = numpy.random.default_rng(seed=42)
         num_samples = self.fitted_posterior_samples.shape[0]
         random_indices = random_selector.choice(
@@ -95,8 +101,8 @@ class PlotModelFits:
 
     def _plot_residuals(
         self,
-        axs,
-    ):
+        axs: Any,
+    ) -> None:
         median_params = numpy.median(self.fitted_posterior_samples, axis=0)
         modelled_y = self.model_func(median_params).squeeze()
         y_residuals = self.y_ave_values - modelled_y

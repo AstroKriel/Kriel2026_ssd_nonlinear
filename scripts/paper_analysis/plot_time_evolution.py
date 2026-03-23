@@ -1,64 +1,65 @@
 ## { SCRIPT
 
 ##
-## === DEPENDENCIES ===
+## === DEPENDENCIES
 ##
 
+## stdlib
 import sys
-import numpy
 from pathlib import Path
 from collections import defaultdict
-from matplotlib.colors import LinearSegmentedColormap
-from jormi.utils import list_utils
-from jormi.ww_io import io_manager, json_files
-from jormi.ww_data import interpolate_data
-from jormi.ww_plots import plot_manager, plot_styler, add_color
+
+## third-party
+import numpy
+
+## personal
+from jormi import ww_lists
+from jormi.ww_io import manage_io, json_io
+from jormi.ww_data import interpolate_series
+from jormi.ww_plots import manage_plots, style_plots, add_color
+from jormi.ww_data.series_types import DataSeries
+from jormi.ww_plots.color_palettes import DivergingPalette
 
 ##
-## === MAIN PROGRAM ===
+## === MAIN PROGRAM
 ##
 
 
-def main():
+def main() -> None:
     num_points = 10**3
-    summary_path = Path(
-        "/Users/necoturb/Documents/Codes/Asgard/mimir/kriel_2025_ssd_nl/datasets/summary_stats.json",
-    )
-    all_results = json_files.read_json_file_into_dict(summary_path)
+    script_dir = Path(__file__).parent
+    figures_dir = (script_dir / ".." / ".." / "figures").resolve()
+    manage_io.init_directory(figures_dir)
+    datasets_dir = (script_dir / ".." / ".." / "datasets").resolve()
+    summary_path = datasets_dir / "summary_stats.json"
+    all_results = json_io.read_json_file_into_dict(summary_path)
 
-    plot_styler.apply_theme_globally()
-    fig, axs = plot_manager.create_figure(num_rows=2, share_x=True)
-    ax_inset = plot_manager.add_inset_axis(
+    style_plots.set_theme()
+    fig, axs = manage_plots.create_figure(num_rows=2, num_cols=1, share_x=True)
+    ax_inset = manage_plots.add_inset_axis(
         ax=axs[0],
         bounds=(0.45, 0.1, 0.475, 0.5),
-        x_label_side="top",
-        y_label_side="left",
+        x_label_alignment="top",
+        y_label_alignment="left",
     )
 
-    custom_cmap = LinearSegmentedColormap.from_list(
-        name="white-brown",
-        colors=["#024f92", "#067bf1", "#d4d4d4", "#f65d25", "#A41409"],
-        N=256,
-    )
-    cmap_Mach, norm_Mach = add_color.create_cmap(
-        cmap_name=custom_cmap,
-        vmin=-1.0,
-        vmid=0,
-        vmax=1.0,
-        cmin=0.1,
-        cmax=0.9,
+    palette_Mach = DivergingPalette.from_name(
+        palette_name="blue-white-red",
+        value_range=(-1.0, 1.0),
+        mid_value=0.0,
+        palette_range=(0.1, 0.9),
     )
 
-    sim_paths_Nres576 = io_manager.ItemFilter(
-        include_string=["Mach", "Re1500", "Pm1", "Nres576"],
+    sim_paths_Nres576 = manage_io.ItemFilter(
+        req_include_words=["Mach", "Re1500", "Pm1", "Nres576"],
     ).filter(
-        directory="/Users/necoturb/Documents/Codes/Asgard/mimir/kriel_2025_ssd_nl/datasets_v2/",
+        directory=datasets_dir / "sims",
     )
 
-    sim_paths_Nres1152 = io_manager.ItemFilter(
-        include_string=["Mach", "Re1500", "Pm1", "Nres1152"],
+    sim_paths_Nres1152 = manage_io.ItemFilter(
+        req_include_words=["Mach", "Re1500", "Pm1", "Nres1152"],
     ).filter(
-        directory="/Users/necoturb/Documents/Codes/Asgard/mimir/kriel_2025_ssd_nl/datasets_v2/",
+        directory=datasets_dir / "sims",
     )
 
     sim_paths = [
@@ -69,17 +70,17 @@ def main():
 
     sim_collections = defaultdict(list)
     for sim_path in sim_paths:
-        data_filepath = io_manager.combine_file_path_parts([sim_path, "dataset.json"])
-        if not io_manager.does_file_exist(data_filepath):
-            print(f"Missing dataset.json for: {sim_path}")
+        data_filepath = manage_io.combine_file_path_parts([sim_path, "sim_data.json"])
+        if not manage_io.does_file_exist(data_filepath):
+            print(f"Missing sim_data.json for: {sim_path}")
             continue
-        sim_instance = json_files.read_json_file_into_dict(data_filepath)
-        sim_name = sim_instance["sim_name"].split("v")[0]
-        t_turb = sim_instance["plasma_params"]["t_turb"]
-        target_Mach = sim_instance["plasma_params"]["target_Mach"]
+        sim_instance = json_io.read_json_file_into_dict(data_filepath)
+        sim_name = sim_instance["details"]["name"].split("v")[0]
+        t_turb = sim_instance["details"]["t_0"]
+        target_Mach = sim_instance["details"]["target_Mach"]
         if target_Mach < 0.1: continue
-        time_values = numpy.array(sim_instance["measured_data"]["time_values"])
-        Emag_values = numpy.array(sim_instance["measured_data"]["magnetic_energy_values"])
+        time_values = numpy.array(sim_instance["time_series"]["time"])
+        Emag_values = numpy.array(sim_instance["time_series"]["Emag"])
         sim_collections[sim_name].append((
             t_turb,
             target_Mach,
@@ -94,12 +95,15 @@ def main():
         interp_time_values = numpy.linspace(biggest_t_min, smallest_t_max, num_points)
         Emag_matrix = []
         for sim_instance in sim_instances:
-            interp_time_values, interp_Emag_values = interpolate_data.interpolate_1d(
-                x_values=sim_instance[2],
-                y_values=sim_instance[3] / Emag_sat,
+            interp_result = interpolate_series.interpolate_1d(
+                DataSeries(
+                    x_values=sim_instance[2],
+                    y_values=sim_instance[3] / Emag_sat,
+                ),
                 x_interp=interp_time_values,
-                kind="linear",
+                spline_order=1,
             )
+            interp_time_values, interp_Emag_values = interp_result.x_values, interp_result.y_values
             Emag_matrix.append(interp_Emag_values)
         Emag_matrix = numpy.array(Emag_matrix)
         Emag_p16_vals = numpy.percentile(Emag_matrix, 16, axis=0)
@@ -107,8 +111,8 @@ def main():
         Emag_p84_vals = numpy.percentile(Emag_matrix, 84, axis=0)
         t_turb = sim_instances[0][0]
         target_Mach = sim_instances[0][1]
-        color = cmap_Mach(norm_Mach(numpy.log10(target_Mach)))
-        index_start = list_utils.get_index_of_closest_value(
+        color = palette_Mach.mpl_cmap(palette_Mach.mpl_norm(numpy.log10(target_Mach)))
+        index_start = ww_lists.get_index_of_closest_value(
             values=numpy.log10(Emag_p50_vals),
             target=-10,
         )
@@ -167,8 +171,8 @@ def main():
     axs[0].set_ylim([-10.5, 1])
     axs[1].set_ylim([-0.025, 1.5])
 
-    ax_inset.set_xlim([0.5, 3])
-    ax_inset.set_ylim([0, 2])
+    ax_inset.set_xlim((0.5, 3))
+    ax_inset.set_ylim((0, 2))
     ticks = [1, 2, 3]
     ax_inset.set_xticks(ticks)
     ax_inset.set_xticklabels(f"{tick}" for tick in ticks)
@@ -176,22 +180,20 @@ def main():
     ax_inset.set_ylabel(r"$E_\mathrm{mag} / \mathrm{E_\mathrm{mag, sat}}$")
     ax_inset.set_xlabel(r"$\log_{10}(t / t_\mathrm{sc})$", labelpad=8)
 
-    add_color.add_cbar_from_cmap(
+    add_color.add_colorbar(
         ax=axs[0],
-        cmap=cmap_Mach,
-        norm=norm_Mach,
+        palette=palette_Mach,
         label=r"$\log_{10}(\mathcal{M})$",
-        side="top",
-        cbar_padding=1e-2,
-        fontsize=24,
+        cbar_side="top",
+        cbar_pad=1e-2,
+        label_size=24,
     )
-    script_dir = Path(__file__).parent
-    fig_path = script_dir / "time_evolution.pdf"
-    plot_manager.save_figure(fig, fig_path)
+    fig_path = figures_dir / "time_evolution.pdf"
+    manage_plots.save_figure(fig, fig_path)
 
 
 ##
-## === ENTRY POINT ===
+## === ENTRY POINT
 ##
 
 if __name__ == "__main__":

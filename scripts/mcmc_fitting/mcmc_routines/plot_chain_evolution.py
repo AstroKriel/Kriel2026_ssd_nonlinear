@@ -1,15 +1,21 @@
 ## { MODULE
 
 ##
-## === DEPENDENCIES ===
+## === DEPENDENCIES
 ##
 
+## stdlib
+from typing import Any
+
+## third-party
 import numpy
-from jormi.ww_io import io_manager
-from jormi.ww_plots import plot_manager, add_annotations
+
+## personal
+from jormi.ww_io import manage_io
+from jormi.ww_plots import manage_plots, annotate_axis
 
 ##
-## === PLOTTING ROUTINE ===
+## === PLOTTING ROUTINE
 ##
 
 
@@ -17,8 +23,8 @@ class PlotChainEvolution:
 
     def __init__(
         self,
-        mcmc_routine,
-    ):
+        mcmc_routine: Any,
+    ) -> None:
         self.num_params = mcmc_routine.num_params
         self.num_walkers = mcmc_routine.num_walkers
         self.raw_chain = mcmc_routine.raw_chain
@@ -28,8 +34,8 @@ class PlotChainEvolution:
 
     def plot(
         self,
-    ):
-        fig, axs = plot_manager.create_figure(num_rows=self.num_params, num_cols=1, share_x=True)
+    ) -> None:
+        fig, axs = manage_plots.create_figure(num_rows=self.num_params, num_cols=1, share_x=True)
         for param_index in range(self.num_params):
             for walker_index in range(self.num_walkers):
                 axs[param_index].plot(
@@ -42,7 +48,7 @@ class PlotChainEvolution:
             axs[param_index].axhspan(p16, p84, color="black", alpha=0.25, lw=1.5, zorder=4)
             axs[param_index].axhline(p50, color="black", ls=":", lw=1.5, zorder=5)
             axs[param_index].set_ylabel(self.labels[param_index])
-        add_annotations.add_text(
+        annotate_axis.add_text(
             ax=axs[0],
             x_pos=0.95,
             y_pos=0.05,
@@ -52,8 +58,8 @@ class PlotChainEvolution:
         )
         axs[-1].set_xlabel("steps")
         fig_name = f"{self.routine_name}_fitted_chain_evolution.png"
-        file_path = io_manager.combine_file_path_parts([self.output_directory, fig_name])
-        plot_manager.save_figure(fig, file_path, verbose=True)
+        file_path = manage_io.combine_file_path_parts([self.output_directory, fig_name])
+        manage_plots.save_figure(fig, file_path, verbose=True)
 
 
 ## } MODULE

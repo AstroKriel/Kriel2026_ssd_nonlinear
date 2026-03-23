@@ -1,42 +1,45 @@
 ## { SCRIPT
 
 ##
-## === DEPENDENCIES ===
+## === DEPENDENCIES
 ##
 
+## stdlib
 import sys
 from pathlib import Path
-from jormi.ww_io import io_manager, json_files, shell_manager
-from jormi.ww_jobs import pbs_job_manager
+
+## personal
+from jormi.ww_io import manage_io, json_io, manage_shell
+from jormi.ww_jobs import pbs_manager
 
 SCRIPT_DIR = Path(__file__).parent
 UV_PROJECT = SCRIPT_DIR.parent
 
 ##
-## === HELPER FUNCTIONS ===
+## === HELPER FUNCTIONS
 ##
 
 
 def submit_job(
-    data_directory,
-    model_name,
-    queued_job_tags,
-    num_bins=None,
-):
-    data_path = io_manager.combine_file_path_parts([data_directory, "dataset.json"])
-    data_dict = json_files.read_json_file_into_dict(data_path, verbose=False)
-    sim_name = data_dict["sim_name"]
+    data_directory: Path,
+    model_name: str,
+    queued_job_tags: list[str],
+    num_bins: int | None = None,
+) -> None:
+    data_path = manage_io.combine_file_path_parts([data_directory, "sim_data.json"])
+    data_dict = json_io.read_json_file_into_dict(data_path, verbose=False)
+    sim_name = data_dict["details"]["name"]
     bin_tag = f"_{num_bins}bins" if (num_bins is not None) else ""
     job_tag = f"{sim_name}_mcmc_{model_name}{bin_tag}"
     if job_tag in queued_job_tags:
         print(f"Job ({job_tag}) is already in the pbs queue.")
         return
-    job_directory = io_manager.combine_file_path_parts(
-        ["/home/586/nk7952/asgard/mimir/kriel_2025_ssd_nl/mcmc_jobs", sim_name],
+    job_directory = manage_io.combine_file_path_parts(
+        [SCRIPT_DIR.parent.parent / "mcmc_jobs", sim_name],
     )
-    io_manager.init_directory(job_directory)
+    manage_io.init_directory(job_directory)
     command_path = (SCRIPT_DIR / "fit_with_mcmc.py").resolve()
-    io_manager.does_file_exist(
+    manage_io.does_file_exist(
         file_path=command_path,
         raise_error=True,
     )
@@ -45,7 +48,7 @@ def submit_job(
         f'uv run --project "{UV_PROJECT}" '
         f'python {command_path} -data_directory {data_directory} -model {model_name}{bin_flag}'
     )
-    job_path = pbs_job_manager.create_pbs_job_script(
+    job_path = pbs_manager.create_pbs_job_script(
       system_name        = "gadi",
       directory          = job_directory,
       file_name          = f"mcmc_fit_{model_name}{bin_tag}.sh",
@@ -61,7 +64,7 @@ def submit_job(
       email_on_finish    = False,
       verbose            = True,
     )
-    shell_manager.execute_shell_command(
+    manage_shell.execute_shell_command(
         command=f"qsub {job_path}",
         working_directory=job_directory,
         timeout_seconds=30,
@@ -69,26 +72,26 @@ def submit_job(
 
 
 ##
-## === MAIN PROGRAM ===
+## === MAIN PROGRAM
 ##
 
 
-def main():
+def main() -> None:
     ## collect data directories
-    base_directory = Path("/scratch/jh2/nk7952/ssd_sims").resolve()
-    data_directories = io_manager.ItemFilter(
-        include_string=["Mach", "Re", "Pm", "Nres"],
+    base_directory = (SCRIPT_DIR.parent.parent / "datasets" / "sims").resolve()
+    data_directories = manage_io.ItemFilter(
+        req_include_words=["Mach", "Re", "Pm", "Nres"],
     ).filter(
         directory=base_directory,
     )
     [print(data_directory) for data_directory in data_directories]
     print(" ")
     ## collect queued jobs
-    queued_jobs = pbs_job_manager.get_list_of_queued_jobs()
+    queued_jobs = pbs_manager.get_list_of_queued_jobs()
     queued_job_tags = [job_tag for _, job_tag in queued_jobs]
     ## delete mcmc jobs from queue
     # [
-    #   shell_manager.execute_shell_command(command=f"qdel {job_id}", timeout_seconds=30)
+    #   manage_shell.execute_shell_command(command=f"qdel {job_id}", timeout_seconds=30)
     #   for job_id, job_tag in queued_jobs
     #   if "_mcmc_" in job_tag
     # ]
@@ -105,7 +108,7 @@ def main():
 
 
 ##
-## === ENTRY POINT ===
+## === ENTRY POINT
 ##
 
 if __name__ == "__main__":
