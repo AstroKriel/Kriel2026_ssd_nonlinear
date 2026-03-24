@@ -126,10 +126,10 @@ class PlotModelPosteriors:
         annotate_axis.add_text(
             ax=ax,
             x_pos=0.5,
-            y_pos=1.05,
+            y_pos=0.98,
             label=label,
             x_alignment="center",
-            y_alignment="bottom",
+            y_alignment="top",
         )
         if param_index > 0:
             ax.tick_params(labelleft=False, labelright=True)

@@ -36,6 +36,7 @@ class PlotChainEvolution:
         self,
     ) -> None:
         fig, axs = manage_plots.create_figure(num_rows=self.num_params, num_cols=1, share_x=True)
+        axs = axs[:, 0]
         for param_index in range(self.num_params):
             for walker_index in range(self.num_walkers):
                 axs[param_index].plot(

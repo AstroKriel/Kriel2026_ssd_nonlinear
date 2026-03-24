@@ -43,6 +43,7 @@ class PlotModelFits:
         self,
     ) -> None:
         fig, axs = manage_plots.create_figure(num_rows=3, num_cols=1, share_x=True)
+        axs = axs[:, 0]
         self._plot_data(axs)
         self._plot_model(axs)
         self._plot_residuals(axs)

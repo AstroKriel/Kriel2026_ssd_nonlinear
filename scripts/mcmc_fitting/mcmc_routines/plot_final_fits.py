@@ -38,6 +38,7 @@ class PlotFinalFits:
         self,
     ) -> None:
         fig, axs = manage_plots.create_figure(num_rows=2, num_cols=1, share_x=True)
+        axs = axs[:, 0]
         self._plot_data(axs)
         self._plot_model(axs)
         fig_name = f"final_fit.png"

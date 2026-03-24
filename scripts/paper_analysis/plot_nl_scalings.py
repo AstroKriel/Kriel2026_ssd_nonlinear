@@ -86,6 +86,7 @@ def main() -> None:
     ## setup figure
     style_plots.set_theme()
     fig, axs = manage_plots.create_figure(num_rows=2, num_cols=1)
+    axs = axs[:, 0]
     ## define custom colormap
     palette = SequentialPalette.from_name(
         palette_name="white-brown",

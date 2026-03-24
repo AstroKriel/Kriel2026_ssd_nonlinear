@@ -36,6 +36,7 @@ def main() -> None:
 
     style_plots.set_theme()
     fig, axs = manage_plots.create_figure(num_rows=2, num_cols=1, share_x=True)
+    axs = axs[:, 0]
     ax_inset = manage_plots.add_inset_axis(
         ax=axs[0],
         bounds=(0.45, 0.1, 0.475, 0.5),
