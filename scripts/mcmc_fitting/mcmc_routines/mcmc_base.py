@@ -306,7 +306,7 @@ class BaseMCMCRoutine:
                 "per_param": ess.tolist(),
                 "median": ess_med,
                 "min": ess_min,
-                "N_raw": int(N_raw)
+                "N_raw": int(N_raw),
             }
             # Simple convergence gates based on tau
             # - Good: nstep >= 50 * tau_max
@@ -316,13 +316,13 @@ class BaseMCMCRoutine:
                 print(f"Chains appear converged: n_steps={nstep} >= 50x tau_max~{tau_max:.1f}.")
             elif nstep >= 5 * tau_max:
                 print(
-                    f"WARNING: Borderline length: n_steps={nstep} is between 5x and 50x tau_max~{tau_max:.1f}."
+                    f"WARNING: Borderline length: n_steps={nstep} is between 5x and 50x tau_max~{tau_max:.1f}.",
                 )
             else:
                 print(f"WARNING: Chain likely too short: n_steps={nstep} < 5x tau_max~{tau_max:.1f}.")
             print(
                 f"Autocorr time (median/max): {tau_med:.1f}/{tau_max:.1f} steps; "
-                f"approx. ESS median/min: {ess_med:.0f}/{ess_min:.0f} out of N={N_raw} raw samples."
+                f"approx. ESS median/min: {ess_med:.0f}/{ess_min:.0f} out of N={N_raw} raw samples.",
             )
         except emcee.autocorr.AutocorrError:
             # Fall back to a softer message if tau is unreliable at current length

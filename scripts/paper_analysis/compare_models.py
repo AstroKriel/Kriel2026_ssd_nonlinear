@@ -35,7 +35,7 @@ def get_linear_model_weight(
     aic_quadratic = -2 * max_ll_quadratic
     min_aic = numpy.min([aic_linear, aic_quadratic])
     return numpy.exp(
-        -0.5 * (aic_linear - min_aic)
+        -0.5 * (aic_linear - min_aic),
     ) / (numpy.exp(-0.5 * (aic_linear - min_aic)) + numpy.exp(-0.5 * (aic_quadratic - min_aic)))
 
 

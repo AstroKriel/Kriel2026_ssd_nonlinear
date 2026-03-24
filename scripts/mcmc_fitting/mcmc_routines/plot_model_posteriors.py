@@ -272,8 +272,10 @@ class PlotModelPosteriors:
             size=params.num_marginal_samples,
             replace=False,
         )
-        marginalized_samples = params.posterior_samples[marginal_sample_indices][:,
-                                                                                 marginalized_param_indices]
+        marginalized_samples = params.posterior_samples[marginal_sample_indices][
+            :,
+            marginalized_param_indices,
+        ]
         grid_points = numpy.zeros((
             num_grid_points * params.num_marginal_samples,
             self.num_params,
