@@ -186,7 +186,11 @@ def main() -> None:
         ## average over the different simulation instances (at a particular resolution)
         sim_averager = EnsembleAverager(directories_in_suite)
         all_results[sim_suite] = sim_averager.run()
-    json_io.save_dict_to_json_file(output_summary_path, all_results, overwrite=True)
+    json_io.save_dict_to_json_file(
+        file_path=output_summary_path,
+        input_dict=all_results,
+        overwrite=True,
+    )
 
 
 if __name__ == "__main__":

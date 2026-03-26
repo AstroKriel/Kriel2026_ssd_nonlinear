@@ -44,24 +44,21 @@ def load_dataset(
 def plot_suites(
     *,
     ax: Any,
-    dataset: dict,
+    suite_stats_list: list[plot_helpers.SuiteStats],
     palette: SequentialPalette,
 ) -> None:
-    for suite_name, suite_stats in dataset.items():
-        print("Looking at:", suite_name)
-        log10_Mach = suite_stats["measured"]["log10_Mach"]
-        log10_Re = suite_stats["measured"]["log10_Re"]
-        p_nl = suite_stats["measured"]["p_nl"]
-        marker, zorder = plot_helpers.get_suite_style(suite_name)
-        color = palette.mpl_cmap(palette.mpl_norm(p_nl["p50"]))
+    for suite in suite_stats_list:
+        print("Looking at:", suite.suite_name)
+        marker, zorder = plot_helpers.get_suite_style(suite.suite_name)
+        color = palette.mpl_cmap(palette.mpl_norm(suite.p_nl.p50))
         plot_helpers.plot_suite_errorbar(
             ax=ax,
-            x=log10_Mach["p50"],
-            y=log10_Re["p50"],
-            x_lo=log10_Mach["std_lo"],
-            x_hi=log10_Mach["std_hi"],
-            y_lo=log10_Re["std_lo"],
-            y_hi=log10_Re["std_hi"],
+            x=suite.log10_Mach.p50,
+            y=suite.log10_Re.p50,
+            x_lo=suite.log10_Mach.std_lo,
+            x_hi=suite.log10_Mach.std_hi,
+            y_lo=suite.log10_Re.std_lo,
+            y_hi=suite.log10_Re.std_hi,
             marker=marker,
             color=color,
             zorder=zorder,
@@ -115,14 +112,25 @@ def main() -> None:
         str(datasets_dir / "summary_v2.json"),
         dataset,
     )
+    suite_stats_list = plot_helpers.load_suite_stats(datasets_dir)
     palette = SequentialPalette.from_name(
         palette_name="purple-white-green",
         value_range=(1.0, 2.0),
     )
     fig, ax = manage_plots.create_figure()
-    plot_suites(ax=ax, dataset=dataset, palette=palette)
-    style_axis(ax=ax, palette=palette)
-    manage_plots.save_figure(fig, figures_dir / "nl_exponent.pdf")
+    plot_suites(
+        ax=ax,
+        suite_stats_list=suite_stats_list,
+        palette=palette,
+    )
+    style_axis(
+        ax=ax,
+        palette=palette,
+    )
+    manage_plots.save_figure(
+        fig=fig,
+        fig_path=figures_dir / "nl_exponent.pdf",
+    )
 
 
 ##

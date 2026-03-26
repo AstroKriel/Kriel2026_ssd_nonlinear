@@ -12,7 +12,7 @@ from typing import Any
 import numpy
 
 ## personal
-from jormi.ww_io import manage_io, json_io
+from jormi.ww_io import manage_io
 from jormi.ww_data import fit_series
 from jormi.ww_plots import manage_plots, annotate_axis, add_color
 from jormi.ww_data.series_types import GaussianSeries
@@ -63,76 +63,55 @@ def generate_line(
 ##
 
 
-def load_dataset(
-    datasets_dir: Path,
-) -> dict:
-    dataset_path = datasets_dir / "summary.json"
-    return json_io.read_json_file_into_dict(dataset_path)
-
-
 def plot_suites(
     *,
     axs: Any,
-    dataset: dict,
+    suite_stats_list: list[plot_helpers.SuiteStats],
     palette: SequentialPalette,
-) -> list[tuple]:
-    coords_to_fit = []
-    for suite_name, suite_stats in dataset.items():
-        print("Looking at:", suite_name)
-        log10_Mach = suite_stats["measured"]["log10_Mach"]
-        log10_Re = suite_stats["measured"]["log10_Re"]
-        log10_alpha_nl = suite_stats["measured"]["log10_alpha_nl"]
-        log10_nl_duration_normed_by_t0 = suite_stats["measured"]["log10_nl_duration_normed_by_t0"]
-        marker, zorder = plot_helpers.get_suite_style(suite_name)
-        marker_color = palette.mpl_cmap(palette.mpl_norm(log10_Re["p50"]))
+) -> None:
+    for suite in suite_stats_list:
+        print("Looking at:", suite.suite_name)
+        marker, zorder = plot_helpers.get_suite_style(suite.suite_name)
+        marker_color = palette.mpl_cmap(palette.mpl_norm(suite.log10_Re.p50))
         plot_helpers.plot_suite_errorbar(
             ax=axs[0],
-            x=log10_Mach["p50"],
-            y=log10_alpha_nl["p50"],
-            x_lo=log10_Mach["std_lo"],
-            x_hi=log10_Mach["std_hi"],
-            y_lo=log10_alpha_nl["std_lo"],
-            y_hi=log10_alpha_nl["std_hi"],
+            x=suite.log10_Mach.p50,
+            y=suite.log10_alpha_nl.p50,
+            x_lo=suite.log10_Mach.std_lo,
+            x_hi=suite.log10_Mach.std_hi,
+            y_lo=suite.log10_alpha_nl.std_lo,
+            y_hi=suite.log10_alpha_nl.std_hi,
             marker=marker,
             color=marker_color,
             zorder=zorder,
         )
         plot_helpers.plot_suite_errorbar(
             ax=axs[1],
-            x=log10_Mach["p50"],
-            y=log10_nl_duration_normed_by_t0["p50"],
-            x_lo=log10_Mach["std_lo"],
-            x_hi=log10_Mach["std_hi"],
-            y_lo=log10_nl_duration_normed_by_t0["std_lo"],
-            y_hi=log10_nl_duration_normed_by_t0["std_hi"],
+            x=suite.log10_Mach.p50,
+            y=suite.log10_nl_duration_normed_by_t0.p50,
+            x_lo=suite.log10_Mach.std_lo,
+            x_hi=suite.log10_Mach.std_hi,
+            y_lo=suite.log10_nl_duration_normed_by_t0.std_lo,
+            y_hi=suite.log10_nl_duration_normed_by_t0.std_hi,
             marker=marker,
             color=marker_color,
             zorder=zorder,
         )
-        coords_to_fit.append(
-            (
-                numpy.float64(log10_Mach["p50"]),
-                numpy.float64(log10_alpha_nl["p50"]),
-                numpy.float64(log10_nl_duration_normed_by_t0["p50"]),
-                numpy.float64(log10_nl_duration_normed_by_t0["std_hi"]),
-            ),
-        )
-    return coords_to_fit
 
 
 def overlay_scalings(
     *,
     axs: Any,
     palette: SequentialPalette,
-    coords_to_fit: list[tuple],
+    suite_stats_list: list[plot_helpers.SuiteStats],
 ) -> None:
     x_values = numpy.linspace(-2, 2, 100)
     model_color = palette.mpl_cmap(0.7)
     ## subsonic growth rate
     subsonic_fit = fit_series.fit_line_with_fixed_slope(
         GaussianSeries(
-            x_values=numpy.array([c[0] for c in coords_to_fit if c[0] < 0]),
-            y_values=numpy.array([c[1] for c in coords_to_fit if c[0] < 0]),
+            x_values=numpy.array([s.log10_Mach.p50 for s in suite_stats_list if s.log10_Mach.p50 < 0]),
+            y_values=numpy.array([s.log10_alpha_nl.p50 for s in suite_stats_list if s.log10_Mach.p50 < 0]),
         ),
         fixed_slope=3,
     )
@@ -151,8 +130,8 @@ def overlay_scalings(
     ## supersonic growth rate
     supersonic_fit = fit_series.fit_linear_model(
         GaussianSeries(
-            x_values=numpy.array([c[0] for c in coords_to_fit if -0.2 < c[0]]),
-            y_values=numpy.array([c[1] for c in coords_to_fit if -0.2 < c[0]]),
+            x_values=numpy.array([s.log10_Mach.p50 for s in suite_stats_list if s.log10_Mach.p50 > -0.2]),
+            y_values=numpy.array([s.log10_alpha_nl.p50 for s in suite_stats_list if s.log10_Mach.p50 > -0.2]),
         ),
     )
     supersonic_label = (
@@ -170,9 +149,9 @@ def overlay_scalings(
     ## universal duration
     duration_fit = fit_series.fit_line_with_fixed_slope(
         GaussianSeries(
-            x_values=numpy.array([c[0] for c in coords_to_fit]),
-            y_values=numpy.array([c[2] for c in coords_to_fit]),
-            y_sigmas=numpy.array([c[3] for c in coords_to_fit]),
+            x_values=numpy.array([s.log10_Mach.p50 for s in suite_stats_list]),
+            y_values=numpy.array([s.log10_nl_duration_normed_by_t0.p50 for s in suite_stats_list]),
+            y_sigmas=numpy.array([s.log10_nl_duration_normed_by_t0.std_hi for s in suite_stats_list]),
         ),
         fixed_slope=0,
     )
@@ -300,18 +279,35 @@ def style_axes(
 def main() -> None:
     figures_dir, datasets_dir = plot_helpers.resolve_paper_dirs(Path(__file__))
     manage_io.init_directory(figures_dir)
-    dataset = load_dataset(datasets_dir)
+    suite_stats_list = plot_helpers.load_suite_stats(datasets_dir)
     palette = SequentialPalette.from_name(
         palette_name="white-brown",
         value_range=(3.1, 3.7),
         palette_range=(0.0, 0.7),
     )
-    fig, axs = manage_plots.create_figure(num_rows=2, num_cols=1)
+    fig, axs = manage_plots.create_figure(
+        num_rows=2,
+        num_cols=1,
+    )
     axs = axs[:, 0]
-    coords_to_fit = plot_suites(axs=axs, dataset=dataset, palette=palette)
-    overlay_scalings(axs=axs, palette=palette, coords_to_fit=coords_to_fit)
-    style_axes(axs=axs, palette=palette)
-    manage_plots.save_figure(fig, figures_dir / "nl_scalings.pdf")
+    plot_suites(
+        axs=axs,
+        suite_stats_list=suite_stats_list,
+        palette=palette,
+    )
+    overlay_scalings(
+        axs=axs,
+        palette=palette,
+        suite_stats_list=suite_stats_list,
+    )
+    style_axes(
+        axs=axs,
+        palette=palette,
+    )
+    manage_plots.save_figure(
+        fig=fig,
+        fig_path=figures_dir / "nl_scalings.pdf",
+    )
 
 
 ##

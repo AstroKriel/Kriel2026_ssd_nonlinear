@@ -5,11 +5,88 @@
 ##
 
 ## stdlib
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 ## third-party
 import numpy
+
+## personal
+from jormi.ww_io import json_io
+
+##
+## === DATA CLASSES
+##
+
+
+@dataclass(frozen=True)
+class MeasuredStat:
+    p50: float
+    std_lo: float
+    std_hi: float
+
+
+@dataclass(frozen=True)
+class SuiteStats:
+    suite_name: str
+    log10_Mach: MeasuredStat
+    log10_Re: MeasuredStat
+    log10_gamma_exp_times_t0: MeasuredStat
+    log10_alpha_nl: MeasuredStat
+    log10_nl_duration_normed_by_t0: MeasuredStat
+    p_nl: MeasuredStat
+
+
+##
+## === DATASET LOADER
+##
+
+
+def load_suite_stats(
+    datasets_dir: Path,
+) -> list[SuiteStats]:
+    raw = json_io.read_json_file_into_dict(datasets_dir / "summary.json")
+    result = []
+    for suite_name, data in raw.items():
+        m = data["measured"]
+        result.append(
+            SuiteStats(
+                suite_name=suite_name,
+                log10_Mach=MeasuredStat(
+                    p50=m["log10_Mach"]["p50"],
+                    std_lo=m["log10_Mach"]["std_lo"],
+                    std_hi=m["log10_Mach"]["std_hi"],
+                ),
+                log10_Re=MeasuredStat(
+                    p50=m["log10_Re"]["p50"],
+                    std_lo=m["log10_Re"]["std_lo"],
+                    std_hi=m["log10_Re"]["std_hi"],
+                ),
+                log10_gamma_exp_times_t0=MeasuredStat(
+                    p50=m["log10_gamma_exp_times_t0"]["p50"],
+                    std_lo=m["log10_gamma_exp_times_t0"]["std_lo"],
+                    std_hi=m["log10_gamma_exp_times_t0"]["std_hi"],
+                ),
+                log10_alpha_nl=MeasuredStat(
+                    p50=m["log10_alpha_nl"]["p50"],
+                    std_lo=m["log10_alpha_nl"]["std_lo"],
+                    std_hi=m["log10_alpha_nl"]["std_hi"],
+                ),
+                log10_nl_duration_normed_by_t0=MeasuredStat(
+                    p50=m["log10_nl_duration_normed_by_t0"]["p50"],
+                    std_lo=m["log10_nl_duration_normed_by_t0"]["std_lo"],
+                    std_hi=m["log10_nl_duration_normed_by_t0"]["std_hi"],
+                ),
+                p_nl=MeasuredStat(
+                    p50=m["p_nl"]["p50"],
+                    std_lo=m["p_nl"]["std_lo"],
+                    std_hi=m["p_nl"]["std_hi"],
+                ),
+            ),
+        )
+    return result
+
 
 ##
 ## === RESOLUTION STYLES

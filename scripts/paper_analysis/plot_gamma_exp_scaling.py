@@ -12,7 +12,7 @@ from typing import Any
 import numpy
 
 ## personal
-from jormi.ww_io import manage_io, json_io
+from jormi.ww_io import manage_io
 from jormi.ww_data import fit_series
 from jormi.ww_plots import manage_plots, annotate_axis, add_color
 from jormi.ww_data.series_types import GaussianSeries
@@ -33,62 +33,45 @@ Y_MIN, Y_MAX = -0.4, 0.45
 ##
 
 
-def load_dataset(
-    datasets_dir: Path,
-) -> dict:
-    dataset_path = datasets_dir / "summary.json"
-    return json_io.read_json_file_into_dict(dataset_path)
-
-
 def plot_suites(
     *,
     ax: Any,
-    dataset: dict,
+    suite_stats_list: list[plot_helpers.SuiteStats],
     palette: DivergingPalette,
-) -> list[tuple]:
-    coords_to_fit = []
-    for suite_name, suite_stats in dataset.items():
-        print("Looking at:", suite_name)
-        log10_Mach = suite_stats["measured"]["log10_Mach"]
-        log10_Re = suite_stats["measured"]["log10_Re"]
-        log10_gamma_exp_times_t0 = suite_stats["measured"]["log10_gamma_exp_times_t0"]
-        marker, zorder = plot_helpers.get_suite_style(suite_name)
-        color = palette.mpl_cmap(palette.mpl_norm(log10_Mach["p50"]))
+) -> None:
+    for suite in suite_stats_list:
+        print("Looking at:", suite.suite_name)
+        marker, zorder = plot_helpers.get_suite_style(suite.suite_name)
+        color = palette.mpl_cmap(palette.mpl_norm(suite.log10_Mach.p50))
         plot_helpers.plot_suite_errorbar(
             ax=ax,
-            x=log10_Re["p50"],
-            y=log10_gamma_exp_times_t0["p50"],
-            x_lo=log10_Re["std_lo"],
-            x_hi=log10_Re["std_hi"],
-            y_lo=log10_gamma_exp_times_t0["std_lo"],
-            y_hi=log10_gamma_exp_times_t0["std_hi"],
+            x=suite.log10_Re.p50,
+            y=suite.log10_gamma_exp_times_t0.p50,
+            x_lo=suite.log10_Re.std_lo,
+            x_hi=suite.log10_Re.std_hi,
+            y_lo=suite.log10_gamma_exp_times_t0.std_lo,
+            y_hi=suite.log10_gamma_exp_times_t0.std_hi,
             marker=marker,
             color=color,
             zorder=zorder,
         )
-        coords_to_fit.append(
-            (
-                numpy.float64(log10_Mach["p50"]),
-                numpy.float64(log10_Re["p50"]),
-                numpy.float64(log10_gamma_exp_times_t0["p50"]),
-            ),
-        )
-    return coords_to_fit
 
 
 def overlay_scalings(
     *,
     ax: Any,
     palette: DivergingPalette,
-    coords_to_fit: list[tuple],
+    suite_stats_list: list[plot_helpers.SuiteStats],
 ) -> None:
     x_values = numpy.linspace(3, 4, 100)
     rotation_bounds = (X_MIN, X_MAX, Y_MIN, Y_MAX)
     ## subsonic scaling
     subsonic_fit = fit_series.fit_line_with_fixed_slope(
         GaussianSeries(
-            x_values=numpy.array([c[1] for c in coords_to_fit if c[0] < 0]),
-            y_values=numpy.array([c[2] for c in coords_to_fit if c[0] < 0]),
+            x_values=numpy.array([s.log10_Re.p50 for s in suite_stats_list if s.log10_Mach.p50 < 0]),
+            y_values=numpy.array(
+                [s.log10_gamma_exp_times_t0.p50 for s in suite_stats_list if s.log10_Mach.p50 < 0],
+            ),
         ),
         fixed_slope=0.5,
     )
@@ -122,8 +105,10 @@ def overlay_scalings(
     ## supersonic scaling
     supersonic_fit = fit_series.fit_line_with_fixed_slope(
         GaussianSeries(
-            x_values=numpy.array([c[1] for c in coords_to_fit if 0 < c[0]]),
-            y_values=numpy.array([c[2] for c in coords_to_fit if 0 < c[0]]),
+            x_values=numpy.array([s.log10_Re.p50 for s in suite_stats_list if s.log10_Mach.p50 > 0]),
+            y_values=numpy.array(
+                [s.log10_gamma_exp_times_t0.p50 for s in suite_stats_list if s.log10_Mach.p50 > 0],
+            ),
         ),
         fixed_slope=1 / 3,
     )
@@ -199,17 +184,31 @@ def style_axis(
 def main() -> None:
     figures_dir, datasets_dir = plot_helpers.resolve_paper_dirs(Path(__file__))
     manage_io.init_directory(figures_dir)
-    dataset = load_dataset(datasets_dir)
+    suite_stats_list = plot_helpers.load_suite_stats(datasets_dir)
     palette = DivergingPalette.from_name(
         palette_name="blue-white-red",
         value_range=(-1.0, 1.0),
         mid_value=0.0,
     )
     fig, ax = manage_plots.create_figure()
-    coords_to_fit = plot_suites(ax=ax, dataset=dataset, palette=palette)
-    overlay_scalings(ax=ax, palette=palette, coords_to_fit=coords_to_fit)
-    style_axis(ax=ax, palette=palette)
-    manage_plots.save_figure(fig, figures_dir / "gamma_exp_scaling.pdf")
+    plot_suites(
+        ax=ax,
+        suite_stats_list=suite_stats_list,
+        palette=palette,
+    )
+    overlay_scalings(
+        ax=ax,
+        palette=palette,
+        suite_stats_list=suite_stats_list,
+    )
+    style_axis(
+        ax=ax,
+        palette=palette,
+    )
+    manage_plots.save_figure(
+        fig=fig,
+        fig_path=figures_dir / "gamma_exp_scaling.pdf",
+    )
 
 
 ##
