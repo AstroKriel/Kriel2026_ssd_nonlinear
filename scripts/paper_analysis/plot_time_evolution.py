@@ -6,6 +6,7 @@
 
 ## stdlib
 import sys
+from dataclasses import dataclass
 from pathlib import Path
 from collections import defaultdict
 from typing import Any
@@ -25,45 +26,61 @@ from jormi.ww_plots.color_palettes import DivergingPalette
 import plot_helpers
 
 ##
+## === DATA CLASSES
+##
+
+
+@dataclass(frozen=True)
+class SimInstance:
+    t_0: float
+    target_Mach: float
+    time_values: numpy.ndarray
+    Emag_values: numpy.ndarray
+
+    def __post_init__(self) -> None:
+        if len(self.time_values) != len(self.Emag_values):
+            raise ValueError(
+                f"time_values and Emag_values must have the same length, "
+                f"got {len(self.time_values)} and {len(self.Emag_values)}",
+            )
+
+
+##
 ## === PIPELINE STAGES
 ##
 
 
 def load_sim_collections(
     datasets_dir: Path,
-    all_results: dict,
-) -> dict[str, list]:
+) -> dict[str, list[SimInstance]]:
     sim_paths_Nres576 = manage_io.ItemFilter(
         req_include_words=["Mach", "Re1500", "Pm1", "Nres576"],
     ).filter(directory=datasets_dir / "sims")
-
     sim_paths_Nres1152 = manage_io.ItemFilter(
         req_include_words=["Mach", "Re1500", "Pm1", "Nres1152"],
     ).filter(directory=datasets_dir / "sims")
-
     sim_paths = [
         _sim_path for _sim_path in sim_paths_Nres576
         if not any(_exclude in str(_sim_path) for _exclude in ["Mach0.3", "Mach0.5", "Mach0.8"])
     ]
     sim_paths.extend(sim_paths_Nres1152)
-
-    sim_collections: dict[str, list] = defaultdict(list)
+    sim_collections: dict[str, list[SimInstance]] = defaultdict(list)
     for sim_path in sim_paths:
         data_filepath = manage_io.combine_file_path_parts([sim_path, "sim_data.json"])
         if not manage_io.does_file_exist(data_filepath):
             print(f"Missing sim_data.json for: {sim_path}")
             continue
-        sim_instance = json_io.read_json_file_into_dict(data_filepath)
-        sim_name = sim_instance["details"]["name"].split("v")[0]
-        target_Mach = sim_instance["details"]["target_Mach"]
+        raw = json_io.read_json_file_into_dict(data_filepath)
+        sim_name = raw["details"]["name"].split("v")[0]
+        target_Mach = raw["details"]["target_Mach"]
         if target_Mach < 0.1:
             continue
         sim_collections[sim_name].append(
-            (
-                sim_instance["details"]["t_0"],
-                target_Mach,
-                numpy.array(sim_instance["time_series"]["time"]),
-                numpy.array(sim_instance["time_series"]["Emag"]),
+            SimInstance(
+                t_0=raw["details"]["t_0"],
+                target_Mach=target_Mach,
+                time_values=numpy.array(raw["time_series"]["time"]),
+                Emag_values=numpy.array(raw["time_series"]["Emag"]),
             ),
         )
     return dict(sim_collections)
@@ -73,22 +90,22 @@ def plot_series(
     *,
     axs: Any,
     ax_inset: Any,
-    sim_collections: dict[str, list],
+    sim_collections: dict[str, list[SimInstance]],
     all_results: dict,
     palette_Mach: DivergingPalette,
     num_points: int = 10**3,
 ) -> None:
     for sim_name, sim_instances in sim_collections.items():
         Emag_sat = all_results[sim_name]["fit_summaries"]["free"]["bin_per_t0"]["sat_energy"]["p50"]
-        biggest_t_min = numpy.max([numpy.min(_sim_instance[2]) for _sim_instance in sim_instances])
-        smallest_t_max = numpy.min([numpy.max(_sim_instance[2]) for _sim_instance in sim_instances])
+        biggest_t_min = numpy.max([numpy.min(s.time_values) for s in sim_instances])
+        smallest_t_max = numpy.min([numpy.max(s.time_values) for s in sim_instances])
         interp_time_values = numpy.linspace(biggest_t_min, smallest_t_max, num_points)
         Emag_matrix_list = []
         for sim_instance in sim_instances:
             interp_result = interpolate_series.interpolate_1d(
                 DataSeries(
-                    x_values=sim_instance[2],
-                    y_values=sim_instance[3] / Emag_sat,
+                    x_values=sim_instance.time_values,
+                    y_values=sim_instance.Emag_values / Emag_sat,
                 ),
                 x_interp=interp_time_values,
                 spline_order=1,
@@ -99,8 +116,8 @@ def plot_series(
         Emag_p16 = numpy.percentile(Emag_matrix, 16, axis=0)
         Emag_p50 = numpy.percentile(Emag_matrix, 50, axis=0)
         Emag_p84 = numpy.percentile(Emag_matrix, 84, axis=0)
-        t_turb = sim_instances[0][0]
-        target_Mach = sim_instances[0][1]
+        t_turb = sim_instances[0].t_0
+        target_Mach = sim_instances[0].target_Mach
         color = palette_Mach.mpl_cmap(palette_Mach.mpl_norm(numpy.log10(target_Mach)))
         index_start = ww_lists.get_index_of_closest_value(
             values=numpy.log10(Emag_p50),
@@ -202,8 +219,12 @@ def main() -> None:
         mid_value=0.0,
         palette_range=(0.1, 0.9),
     )
-    sim_collections = load_sim_collections(datasets_dir, all_results)
-    fig, axs = manage_plots.create_figure(num_rows=2, num_cols=1, share_x=True)
+    sim_collections = load_sim_collections(datasets_dir)
+    fig, axs = manage_plots.create_figure(
+        num_rows=2,
+        num_cols=1,
+        share_x=True,
+    )
     axs = axs[:, 0]
     ax_inset = manage_plots.add_inset_axis(
         ax=axs[0],
@@ -223,7 +244,10 @@ def main() -> None:
         ax_inset=ax_inset,
         palette_Mach=palette_Mach,
     )
-    manage_plots.save_figure(fig, figures_dir / "time_evolution.pdf")
+    manage_plots.save_figure(
+        fig=fig,
+        fig_path=figures_dir / "time_evolution.pdf",
+    )
 
 
 ##
