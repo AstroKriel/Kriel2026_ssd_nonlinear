@@ -35,9 +35,7 @@ class PlotModelFits:
         self.data_label = mcmc_routine.data_label
         self.num_params = mcmc_routine.num_params
         self.fitted_posterior_samples = mcmc_routine.fitted_posterior_samples
-        self.model_func = mcmc_routine._model
-        self._annotate_fitted_params = mcmc_routine._annotate_fitted_params
-        self._annotate_output_params = mcmc_routine._annotate_output_params
+        self._mcmc_routine = mcmc_routine
 
     def plot(
         self,
@@ -47,8 +45,8 @@ class PlotModelFits:
         self._plot_data(axs)
         self._plot_model(axs)
         self._plot_residuals(axs)
-        self._annotate_fitted_params(axs)
-        self._annotate_output_params(axs)
+        self._mcmc_routine._annotate_fitted_params(axs)
+        self._mcmc_routine._annotate_output_params(axs)
         if self.data_label is not None:
             axs[0].set_ylabel(self.data_label)
             stripped_data_label = self.data_label.strip("$")
@@ -93,7 +91,7 @@ class PlotModelFits:
         modelled_curves_list = []
         for random_index in random_indices:
             params = self.fitted_posterior_samples[random_index]
-            y_model = self.model_func(params).squeeze()
+            y_model = self._mcmc_routine._model(params).squeeze()
             modelled_curves_list.append(y_model)
             axs[0].plot(self.x_values, y_model, color="gray", alpha=0.2, lw=0.5, zorder=1)
         modelled_curves = numpy.array(modelled_curves_list)
@@ -105,7 +103,7 @@ class PlotModelFits:
         axs: Any,
     ) -> None:
         median_params = numpy.median(self.fitted_posterior_samples, axis=0)
-        modelled_y = self.model_func(median_params).squeeze()
+        modelled_y = self._mcmc_routine._model(median_params).squeeze()
         y_residuals = self.y_ave_values - modelled_y
         axs[2].plot(
             self.x_values,
