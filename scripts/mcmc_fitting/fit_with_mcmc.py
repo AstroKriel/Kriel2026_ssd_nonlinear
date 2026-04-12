@@ -16,58 +16,13 @@ from jormi.ww_io import manage_io, json_io
 
 ## local
 from mcmc_routines.mcmc_stage_1 import Stage1MCMCRoutine
+from mcmc_routines.mcmc_stage_2 import Stage2MCMCRoutine
 from mcmc_routines.mcmc_stage_2 import Stage2MCMCRoutine_free
 from mcmc_routines.mcmc_stage_2 import Stage2MCMCRoutine_linear
 from mcmc_routines.mcmc_stage_2 import Stage2MCMCRoutine_quadratic
+from mcmc_routines.mcmc_utils import compute_binned_data
+from mcmc_routines.mcmc_utils import compute_median_params_from_kde
 from mcmc_routines.plot_final_fits import PlotFinalFits
-
-##
-## === HELPER FUNCTIONS
-##
-
-
-def compute_median_params_from_kde(
-    kde,
-    num_samples: int = 10000,
-) -> tuple[float, ...]:
-    samples = kde.resample(num_samples)
-    return tuple(numpy.median(samples, axis=1))
-
-
-def compute_binned_data(
-    x_values: numpy.ndarray,
-    y_values: numpy.ndarray,
-    num_bins: int,
-) -> dict[str, numpy.ndarray]:
-    x_bin_edges = numpy.linspace(0, numpy.max(x_values), num_bins + 1)
-    x_bin_centers = 0.5 * (x_bin_edges[1:] + x_bin_edges[:-1])
-    x_bin_indices = numpy.digitize(x_values, x_bin_edges) - 1
-    y_ave_s = numpy.zeros(num_bins)
-    y_std_s = numpy.zeros(num_bins)
-    log10_y_ave_s = numpy.zeros(num_bins)
-    log10_y_std_s = numpy.zeros(num_bins)
-    for bin_index in range(num_bins):
-        bin_mask = (x_bin_indices == bin_index)
-        if numpy.any(bin_mask):
-            y_values_in_bin = numpy.array(y_values)[bin_mask]
-            log10_y_values_in_bin = numpy.log10(y_values_in_bin)
-            y_ave_s[bin_index] = numpy.mean(y_values_in_bin)
-            y_std_s[bin_index] = numpy.std(y_values_in_bin)
-            log10_y_ave_s[bin_index] = numpy.mean(log10_y_values_in_bin)
-            log10_y_std_s[bin_index] = numpy.std(log10_y_values_in_bin)
-        else:
-            y_ave_s[bin_index] = numpy.nan
-            y_std_s[bin_index] = numpy.nan
-            log10_y_ave_s[bin_index] = numpy.nan
-            log10_y_std_s[bin_index] = numpy.nan
-    return {
-        "x_bin_centers": x_bin_centers,
-        "y_ave_s": y_ave_s,
-        "y_std_s": y_std_s,
-        "log10_y_ave_s": log10_y_ave_s,
-        "log10_y_std_s": log10_y_std_s,
-    }
-
 
 ##
 ## === MAIN PROGRAM
@@ -162,37 +117,20 @@ def main() -> None:
     )
     ## run stage 2 fitter
     print("Running stage 2.")
-    stage2_mcmc: Stage2MCMCRoutine_linear | Stage2MCMCRoutine_quadratic | Stage2MCMCRoutine_free
-    if model_name == "linear":
-        stage2_mcmc = Stage2MCMCRoutine_linear(
-            output_directory=output_directory,
-            time_values=binned_data["x_bin_centers"],
-            ave_energy_values=binned_data["y_ave_s"],
-            std_energy_values=binned_data["y_std_s"],
-            initial_params=stage2_initial_params,
-            prior_kde=stage2_prior_kde,
-            plot_posterior_kde=True,
-        )
-    elif model_name == "quadratic":
-        stage2_mcmc = Stage2MCMCRoutine_quadratic(
-            output_directory=output_directory,
-            time_values=binned_data["x_bin_centers"],
-            ave_energy_values=binned_data["y_ave_s"],
-            std_energy_values=binned_data["y_std_s"],
-            initial_params=stage2_initial_params,
-            prior_kde=stage2_prior_kde,
-            plot_posterior_kde=True,
-        )
-    else:
-        stage2_mcmc = Stage2MCMCRoutine_free(
-            output_directory=output_directory,
-            time_values=binned_data["x_bin_centers"],
-            ave_energy_values=binned_data["y_ave_s"],
-            std_energy_values=binned_data["y_std_s"],
-            initial_params=stage2_initial_params,
-            prior_kde=stage2_prior_kde,
-            plot_posterior_kde=True,
-        )
+    stage2_classes = {
+        "linear": Stage2MCMCRoutine_linear,
+        "quadratic": Stage2MCMCRoutine_quadratic,
+        "free": Stage2MCMCRoutine_free,
+    }
+    stage2_mcmc: Stage2MCMCRoutine = stage2_classes[model_name](
+        output_directory=output_directory,
+        time_values=binned_data["x_bin_centers"],
+        ave_energy_values=binned_data["y_ave_s"],
+        std_energy_values=binned_data["y_std_s"],
+        initial_params=stage2_initial_params,
+        prior_kde=stage2_prior_kde,
+        plot_posterior_kde=True,
+    )
     stage2_mcmc.estimate_posterior()
     ## plot the measured vs modelled energy evolution (both linear and log10-transformed energy)
     PlotFinalFits(stage2_mcmc).plot()
