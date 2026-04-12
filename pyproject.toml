@@ -18,3 +18,8 @@ jormi = { git = "https://github.com/AstroKriel/PythonHelpers.git", rev = "031f17
 
 [tool.pyright]
 include = ["scripts"]
+reportExplicitAny = "none"       # basedpyright-specific: flags every `Any`; unavoidable in numpy/scipy code
+reportAny = "none"               # basedpyright-specific: noisy cascade of the above
+reportUnknownArgumentType = "none"  # cascade from untyped third-party packages (emcee, scipy); not actionable
+reportUnknownMemberType = "none"    # cascade from untyped third-party packages; not actionable
+reportUnknownVariableType = "none"  # cascade from untyped third-party packages; not actionable
