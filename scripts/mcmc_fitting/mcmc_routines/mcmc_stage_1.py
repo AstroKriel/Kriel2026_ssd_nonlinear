@@ -10,6 +10,7 @@ from typing import Any
 
 ## third-party
 import numpy
+from numpy.typing import NDArray
 
 ## local
 from . import mcmc_base
@@ -26,9 +27,9 @@ class Stage1MCMCRoutine(mcmc_base.BaseMCMCRoutine):
         self,
         *,
         output_directory: str | Path,
-        time_values: list | numpy.ndarray,
-        ave_log10_energy_values: list | numpy.ndarray,
-        std_log10_energy_values: list | numpy.ndarray,
+        time_values: list[Any] | NDArray[Any],
+        ave_log10_energy_values: list[Any] | NDArray[Any],
+        std_log10_energy_values: list[Any] | NDArray[Any],
         initial_params: tuple[float, ...],
         plot_posterior_kde: bool = True,
     ) -> None:
@@ -55,14 +56,16 @@ class Stage1MCMCRoutine(mcmc_base.BaseMCMCRoutine):
 
     def _model(
         self,
-        param_vectors: numpy.ndarray,
-    ) -> numpy.ndarray:
+        param_vectors: NDArray[Any],
+    ) -> NDArray[Any]:
         param_vectors = numpy.atleast_2d(param_vectors)  # (N, P)
         ## output dimensions
         num_local_walkers = param_vectors.shape[0]  # N
         num_data_points = len(self.x_values)  # T
         ## unpack model parameters (P = 3)
-        log10_init_energy, gamma, transition_time = param_vectors.T
+        log10_init_energy = param_vectors[:, 0]
+        gamma = param_vectors[:, 1]
+        transition_time = param_vectors[:, 2]
         ## reshape parameters to allow for vectorising over param-rows
         x_values_2d = self.x_values[None, :]  # shape (1, T)
         gamma_2d = gamma[:, None]  # shape (N, 1)
@@ -86,12 +89,14 @@ class Stage1MCMCRoutine(mcmc_base.BaseMCMCRoutine):
 
     def _get_valid_params_mask(
         self,
-        param_vectors: numpy.ndarray,
+        param_vectors: NDArray[Any],
         verbose: bool = False,
-    ) -> numpy.ndarray:
+    ) -> NDArray[Any]:
         param_vectors = numpy.atleast_2d(param_vectors)
         num_local_walkers = param_vectors.shape[0]
-        log10_init_energy, gamma, transition_time = param_vectors.T
+        log10_init_energy = param_vectors[:, 0]
+        gamma = param_vectors[:, 1]
+        transition_time = param_vectors[:, 2]
         valid_log10_init_energy = (-30 < log10_init_energy) & (log10_init_energy < -5)
         valid_gamma = (0 < gamma) & (gamma < 10)
         valid_transition_time = (0.1 * self.max_sim_time
@@ -138,7 +143,7 @@ class Stage1MCMCRoutine(mcmc_base.BaseMCMCRoutine):
 
     def _get_output_params(
         self,
-    ) -> tuple[numpy.ndarray, list[str]]:
+    ) -> tuple[NDArray[Any], list[str]]:
         assert self.fitted_posterior_samples is not None
         log10_init_energy_samples = self.fitted_posterior_samples[:, 0]
         gamma_samples = self.fitted_posterior_samples[:, 1]

@@ -11,6 +11,7 @@ from typing import Any
 import numpy
 from scipy.ndimage import gaussian_filter1d
 from scipy.stats import gaussian_kde
+from numpy.typing import NDArray
 
 ## personal
 from jormi import ww_lists
@@ -31,9 +32,9 @@ class Stage2MCMCRoutine(
         self,
         *,
         output_directory: str,
-        time_values: list | numpy.ndarray,
-        ave_energy_values: list | numpy.ndarray,
-        std_energy_values: list | numpy.ndarray,
+        time_values: list[Any] | NDArray[Any],
+        ave_energy_values: list[Any] | NDArray[Any],
+        std_energy_values: list[Any] | NDArray[Any],
         initial_params: tuple[float, float, float, float],
         prior_kde: gaussian_kde | None = None,
         plot_posterior_kde: bool = True,
@@ -82,8 +83,8 @@ class Stage2MCMCRoutine(
 
     def _define_constraints(
         self,
-        time_values: list | numpy.ndarray,
-        ave_energy_values: list | numpy.ndarray,
+        time_values: list[Any] | NDArray[Any],
+        ave_energy_values: list[Any] | NDArray[Any],
         max_num_bins: int = 100,
     ) -> float:
         self.max_sim_time = numpy.max(time_values)
@@ -137,19 +138,27 @@ class Stage2MCMCRoutine(
 
     def _model(
         self,
-        param_vectors: numpy.ndarray,
-    ) -> numpy.ndarray:
+        param_vectors: NDArray[Any],
+    ) -> NDArray[Any]:
         param_vectors = numpy.atleast_2d(param_vectors)  # (N, P)
         ## output dimensions
         num_local_walkers = param_vectors.shape[0]  # N
         num_data_points = len(self.x_values)  # T
         if self.fixed_nl_exponent is None:
             ## unpack model parameters (P = 6)
-            log10_init_energy, log10_sat_energy, exp_gamma, nl_start_time, sat_start_time, free_nl_exponent = param_vectors.T
-            nl_exponent = free_nl_exponent
+            log10_init_energy = param_vectors[:, 0]
+            log10_sat_energy = param_vectors[:, 1]
+            exp_gamma = param_vectors[:, 2]
+            nl_start_time = param_vectors[:, 3]
+            sat_start_time = param_vectors[:, 4]
+            nl_exponent = param_vectors[:, 5]
         else:
             ## unpack model parameters (P = 5)
-            log10_init_energy, log10_sat_energy, exp_gamma, nl_start_time, sat_start_time = param_vectors.T
+            log10_init_energy = param_vectors[:, 0]
+            log10_sat_energy = param_vectors[:, 1]
+            exp_gamma = param_vectors[:, 2]
+            nl_start_time = param_vectors[:, 3]
+            sat_start_time = param_vectors[:, 4]
             nl_exponent = self.fixed_nl_exponent * numpy.ones_like(log10_init_energy)
         ## reshape parameters to allow for vectorising over param-rows
         x_values_2d = self.x_values[None, :]  # shape (1, T)
@@ -185,16 +194,24 @@ class Stage2MCMCRoutine(
 
     def _get_valid_params_mask(
         self,
-        param_vectors: numpy.ndarray,
+        param_vectors: NDArray[Any],
         verbose: bool = False,
-    ) -> numpy.ndarray:
+    ) -> NDArray[Any]:
         param_vectors = numpy.atleast_2d(param_vectors)
         num_local_walkers = param_vectors.shape[0]
         if self.fixed_nl_exponent is None:
-            log10_init_energy, log10_sat_energy, exp_gamma, nl_start_time, sat_start_time, free_nl_exponent = param_vectors.T
-            nl_exponent = free_nl_exponent
+            log10_init_energy = param_vectors[:, 0]
+            log10_sat_energy = param_vectors[:, 1]
+            exp_gamma = param_vectors[:, 2]
+            nl_start_time = param_vectors[:, 3]
+            sat_start_time = param_vectors[:, 4]
+            nl_exponent = param_vectors[:, 5]
         else:
-            log10_init_energy, log10_sat_energy, exp_gamma, nl_start_time, sat_start_time = param_vectors.T
+            log10_init_energy = param_vectors[:, 0]
+            log10_sat_energy = param_vectors[:, 1]
+            exp_gamma = param_vectors[:, 2]
+            nl_start_time = param_vectors[:, 3]
+            sat_start_time = param_vectors[:, 4]
             nl_exponent = self.fixed_nl_exponent * numpy.ones_like(log10_init_energy)
         valid_log10_init_energy = (-30 < log10_init_energy) & (log10_init_energy < -5)
         valid_log10_sat_energy = (-5 < log10_sat_energy) & (log10_sat_energy < 0)
@@ -231,8 +248,8 @@ class Stage2MCMCRoutine(
 
     def _get_kde_params(
         self,
-        param_vectors: numpy.ndarray,
-    ) -> numpy.ndarray:
+        param_vectors: NDArray[Any],
+    ) -> NDArray[Any]:
         param_vectors = numpy.atleast_2d(param_vectors)
         ## ignore the transition times implicity gives them a unifrom prior
         return numpy.asarray(param_vectors[:, :3])

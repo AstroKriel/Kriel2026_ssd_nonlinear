@@ -7,6 +7,7 @@
 ## stdlib
 from pathlib import Path
 from collections import deque
+from abc import ABC, abstractmethod
 from typing import Any, Callable
 
 ## third-party
@@ -14,6 +15,7 @@ import numpy
 import emcee
 from tqdm import tqdm
 from scipy.stats import gaussian_kde
+from numpy.typing import NDArray
 
 ## personal
 from jormi.ww_io import manage_io
@@ -28,7 +30,7 @@ from . import plot_model_fits
 ##
 
 
-class BaseMCMCRoutine:
+class BaseMCMCRoutine(ABC):
     """
   Base class for running MCMC inference using emcee. 
   Subclasses must define a model and parameter validation logic.
@@ -36,41 +38,41 @@ class BaseMCMCRoutine:
 
     ## methods that need to be implemented by each subclass
 
+    @abstractmethod
     def _model(
         self,
-        param_vectors: numpy.ndarray,
-    ) -> numpy.ndarray:
-        raise NotImplementedError()
+        param_vectors: NDArray[Any],
+    ) -> NDArray[Any]: ...
 
+    @abstractmethod
     def _get_valid_params_mask(
         self,
-        param_vectors: numpy.ndarray,
-    ) -> numpy.ndarray:
-        raise NotImplementedError()
+        param_vectors: NDArray[Any],
+    ) -> NDArray[Any]: ...
 
     ## hooks that can be overwritten by each subclass
 
     def _get_kde_params(
         self,
-        param_vectors: numpy.ndarray,
-    ) -> numpy.ndarray:
+        param_vectors: NDArray[Any],
+    ) -> NDArray[Any]:
         return numpy.asarray(param_vectors)
 
     def _get_output_params(
         self,
-    ) -> tuple[numpy.ndarray, list[str]]:
+    ) -> tuple[NDArray[Any], list[str]]:
         assert self.fitted_posterior_samples is not None
         return self.fitted_posterior_samples, self.fitted_param_labels
 
     def _annotate_fitted_params(
         self,
-        axs: Any,
+        _axs: Any,
     ) -> None:
         pass
 
     def _annotate_output_params(
         self,
-        axs: Any,
+        _axs: Any,
     ) -> None:
         pass
 
@@ -81,14 +83,14 @@ class BaseMCMCRoutine:
         *,
         routine_name: str,
         output_directory: str | Path,
-        x_values: list | numpy.ndarray,
-        y_values: list | numpy.ndarray,
-        likelihood_sigma: list | numpy.ndarray,
+        x_values: list[Any] | NDArray[Any],
+        y_values: list[Any] | NDArray[Any],
+        likelihood_sigma: list[Any] | NDArray[Any],
         initial_params: tuple[float, ...],
         prior_kde: gaussian_kde | None = None,
         plot_posterior_kde: bool = False,
         data_label: str | None = None,
-        fitted_param_labels: list[str] = [],
+        fitted_param_labels: list[str] | None = None,
     ) -> None:
         self.routine_name = routine_name
         self.output_directory = output_directory
@@ -97,17 +99,17 @@ class BaseMCMCRoutine:
         self.likelihood_sigma = likelihood_sigma
         self.initial_params = initial_params
         self.num_params = len(self.initial_params)
-        self._prior_logpdf: Callable | None = prior_kde.logpdf if (prior_kde is not None) else None
+        self._prior_logpdf: Callable[..., Any] | None = prior_kde.logpdf if (prior_kde is not None) else None
         self.data_label = data_label
-        self.fitted_param_labels = fitted_param_labels
+        self.fitted_param_labels = fitted_param_labels if (fitted_param_labels is not None) else []
         self.plot_posterior_kde = plot_posterior_kde
         self._validate_inputs()
         ## define key outputs
-        self.raw_chain: numpy.ndarray | None = None
-        self.auto_correlation_time: numpy.ndarray | None = None
-        self.fitted_posterior_samples: numpy.ndarray | None = None
+        self.raw_chain: NDArray[Any] | None = None
+        self.auto_correlation_time: NDArray[Any] | None = None
+        self.fitted_posterior_samples: NDArray[Any] | None = None
         self.fitted_posterior_kde: gaussian_kde | None = None
-        self.output_posterior_samples: numpy.ndarray | None = None
+        self.output_posterior_samples: NDArray[Any] | None = None
         self.output_posterior_kde: gaussian_kde | None = None
 
     def _validate_inputs(
@@ -202,8 +204,8 @@ class BaseMCMCRoutine:
 
     def _log_posterior(
         self,
-        param_vectors: numpy.ndarray,
-    ) -> numpy.ndarray:
+        param_vectors: NDArray[Any],
+    ) -> NDArray[Any]:
         lp_values = self._log_prior(param_vectors)
         valid_prior_mask = numpy.isfinite(lp_values)
         ll_values = numpy.full_like(lp_values, -numpy.inf)
@@ -212,15 +214,15 @@ class BaseMCMCRoutine:
 
     def _log_prior(
         self,
-        param_vectors: numpy.ndarray,
-    ) -> numpy.ndarray:
+        param_vectors: NDArray[Any],
+    ) -> NDArray[Any]:
         valid_params_mask = self._get_valid_params_mask(param_vectors)
         num_local_walkers = param_vectors.shape[0]
         lp_values = numpy.full(num_local_walkers, -numpy.inf)
         if self._prior_logpdf is not None:
             valid_params = numpy.atleast_2d(param_vectors[valid_params_mask])
             kde_vector = self._get_kde_params(valid_params)
-            kde_logpdfs = self._prior_logpdf(kde_vector.T)
+            kde_logpdfs = numpy.asarray(self._prior_logpdf(kde_vector.T))
             lp_values[valid_params_mask] = kde_logpdfs
         else:
             lp_values[valid_params_mask] = 0.0  # uniform prior
@@ -228,8 +230,8 @@ class BaseMCMCRoutine:
 
     def _log_likelihood(
         self,
-        param_vectors: numpy.ndarray,
-    ) -> numpy.ndarray:
+        param_vectors: NDArray[Any],
+    ) -> NDArray[Any]:
         param_vectors = numpy.atleast_2d(param_vectors)
         num_local_walkers = param_vectors.shape[0]
         valid_params_mask = self._get_valid_params_mask(param_vectors)
@@ -254,16 +256,16 @@ class BaseMCMCRoutine:
             raise
         return ll_values
 
-    def _check_chain_convergence(self, mcmc_sampler: emcee.EnsembleSampler) -> dict:
+    def _check_chain_convergence(self, mcmc_sampler: emcee.EnsembleSampler) -> dict[str, Any]:
         """
         Run lightweight convergence diagnostics on the *raw* emcee chain.
         Reports (a) acceptance fractions, (b) integrated autocorrelation times tau,
         and (c) approximate effective sample sizes (ESS). Sets attributes on `self`
         and returns a summary dict.
         """
-        summary: dict = {}
+        summary: dict[str, Any] = {}
         # --- Acceptance fraction diagnostics (always available)
-        acc_fracs = numpy.asarray(getattr(mcmc_sampler, "acceptance_fraction", []), dtype=float)
+        acc_fracs = numpy.asarray(mcmc_sampler.acceptance_fraction, dtype=float)
         if acc_fracs.size:
             acc_med = float(numpy.median(acc_fracs))
             acc_min = float(numpy.min(acc_fracs))
@@ -286,9 +288,8 @@ class BaseMCMCRoutine:
         else:
             print("NOTE: Sampler did not report acceptance fractions.")
         # --- Autocorrelation time and ESS
-        nwalk = getattr(mcmc_sampler, "nwalkers", None) or self.num_walkers
+        nwalk = self.num_walkers
         nstep = int(self.num_steps)
-        ndim = getattr(mcmc_sampler, "ndim", None) or getattr(self, "num_params", None)
         try:
             # tol=0 gives the most conservative estimate; it will raise if chain is too short
             tau = numpy.asarray(mcmc_sampler.get_autocorr_time(tol=0), dtype=float)  # shape: (ndim,)
