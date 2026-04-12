@@ -30,9 +30,8 @@ class PlotFinalFits:
         self.output_directory = mcmc_routine.output_directory
         self.x_values = mcmc_routine.x_values
         self.y_values = mcmc_routine.y_values
-        self.num_params = mcmc_routine.num_params
-        self.model_func = mcmc_routine._model
         self.fitted_posterior_samples = mcmc_routine.fitted_posterior_samples
+        self._mcmc_routine = mcmc_routine
 
     def plot(
         self,
@@ -41,6 +40,7 @@ class PlotFinalFits:
         axs = axs[:, 0]
         self._plot_data(axs)
         self._plot_model(axs)
+        self._label_plot(axs)
         fig_name = f"final_fit.png"
         fig_file_path = manage_io.combine_file_path_parts([self.output_directory, fig_name])
         manage_plots.save_figure(fig, fig_file_path, verbose=True)
@@ -59,14 +59,15 @@ class PlotFinalFits:
         axs: Any,
     ) -> None:
         rng = numpy.random.default_rng(seed=42)
+        num_samples = self.fitted_posterior_samples.shape[0]
         random_indices = rng.choice(
-            self.num_params,
-            size=min(self.num_curves, self.num_params),
+            num_samples,
+            size=min(self.num_curves, num_samples),
             replace=False,
         )
         modelled_curves = numpy.array(
             [
-                self.model_func(self.fitted_posterior_samples[sample_index]).squeeze()
+                self._mcmc_routine._model(self.fitted_posterior_samples[sample_index]).squeeze()
                 for sample_index in random_indices
             ],
         )
