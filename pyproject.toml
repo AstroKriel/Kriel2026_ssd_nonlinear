@@ -14,10 +14,7 @@ dependencies = [
 ]
 
 [tool.uv.sources]
-jormi = {
-    git = "https://github.com/AstroKriel/PythonHelpers.git",
-    rev = "2f574043dc280fd0d91d3659b836aa0afff4e1e6"
-}
+jormi = { git = "https://github.com/AstroKriel/PythonHelpers.git", rev = "14a6331f1e31477afece32120c7d84b7f29ab17e" }
 
 
 [tool.pyright]
