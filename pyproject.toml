@@ -25,3 +25,4 @@ reportUnknownMemberType = "none"    # cascade from untyped third-party packages;
 reportUnknownVariableType = "none"  # cascade from untyped third-party packages; not actionable
 reportImplicitOverride = "none"     # too verbose to require @override on every subclass method
 reportMissingTypeStubs = "none"     # emcee, tqdm, and other deps ship no stubs; not actionable
+reportImplicitStringConcatenation = "none"  # implicit string concat is used intentionally
