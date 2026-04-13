@@ -198,7 +198,7 @@ class BaseMCMCRoutine(ABC):
                 bw_method="scott",
             )
         ## create diagnostic outputs
-        self._make_plots()
+        self.make_plots()
         self._save_posterior_samples()
 
     def _log_posterior(
@@ -288,24 +288,24 @@ class BaseMCMCRoutine(ABC):
             ess_med = float(numpy.median(ess))
             ess_min = float(numpy.min(ess))
             print(
-                f"Autocorr time (median/max): {tau_med:.1f}/{tau_max:.1f} steps; approx. ESS median/min: {ess_med:.0f}/{ess_min:.0f} out of N={N_raw} raw samples."
+                f"Autocorr time (median/max): {tau_med:.1f}/{tau_max:.1f} steps; approx. ESS median/min: {ess_med:.0f}/{ess_min:.0f} out of N={N_raw} raw samples.",
             )
             ## convergence gates: good >= 50*tau, borderline >= 5*tau, poor < 5*tau
             if nstep >= 50 * tau_max:
                 print(f"Chains appear converged: n_steps={nstep} >= 50x tau_max~{tau_max:.1f}.")
             elif nstep >= 5 * tau_max:
                 print(
-                    f"WARNING: Borderline length: n_steps={nstep} is between 5x and 50x tau_max~{tau_max:.1f}."
+                    f"WARNING: Borderline length: n_steps={nstep} is between 5x and 50x tau_max~{tau_max:.1f}.",
                 )
             else:
                 print(f"WARNING: Chain likely too short: n_steps={nstep} < 5x tau_max~{tau_max:.1f}.")
         except emcee.autocorr.AutocorrError:
             print(
-                "WARNING: Could not reliably estimate autocorrelation time (chain likely too short). Proceeding with visual/heuristic checks."
+                "WARNING: Could not reliably estimate autocorrelation time (chain likely too short). Proceeding with visual/heuristic checks.",
             )
             self.auto_correlation_time = None
 
-    def _make_plots(
+    def make_plots(
         self,
     ) -> None:
         plot_chain_evolution.PlotChainEvolution(self).plot()

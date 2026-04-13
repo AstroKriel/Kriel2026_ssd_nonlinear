@@ -42,7 +42,7 @@ class PlotFinalFits:
         self._plot_data(axs)
         self._plot_model(axs)
         self._label_plot(axs)
-        fig_name = f"final_fit.png"
+        fig_name = "final_fit.png"
         fig_file_path = manage_io.combine_file_path_parts([self.output_directory, fig_name])
         manage_plots.save_figure(fig, fig_file_path, verbose=True)
 

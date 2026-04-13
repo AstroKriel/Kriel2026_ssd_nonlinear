@@ -100,11 +100,12 @@ def main() -> None:
         print(
             f"Estimated stage 1 transition time: {stage1_median_transition_time:.2f} ({sat_percent_of_subset_time:.1f}% of max trimmed time)",
         )
-        if sat_fraction_of_subset_time >= max_sat_fraction_of_subset_time: break
+        if sat_fraction_of_subset_time >= max_sat_fraction_of_subset_time:
+            break
         max_subset_time *= 0.85  # trim off 15% of tail
         print(f"Trimmed to {max_subset_time:.2f}, re-running stage 1...")
     stage1_mcmc.plot_posterior_kde = True
-    stage1_mcmc._make_plots()
+    stage1_mcmc.make_plots()
     ## extract key outputs from stage 1
     stage2_prior_kde = stage1_mcmc.output_posterior_kde
     ## build initial guess for stage 2

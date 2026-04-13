@@ -9,6 +9,7 @@ from typing import Any
 
 ## third-party
 import numpy
+from numpy.typing import NDArray
 
 ##
 ## === DATA HELPERS
@@ -16,10 +17,10 @@ import numpy
 
 
 def compute_binned_data(
-    x_values: numpy.ndarray,
-    y_values: numpy.ndarray,
+    x_values: NDArray[Any],
+    y_values: NDArray[Any],
     num_bins: int,
-) -> dict[str, numpy.ndarray]:
+) -> dict[str, NDArray[Any]]:
     x_bin_edges = numpy.linspace(0, numpy.max(x_values), num_bins + 1)
     x_bin_centers = 0.5 * (x_bin_edges[1:] + x_bin_edges[:-1])
     x_bin_indices = numpy.digitize(x_values, x_bin_edges) - 1
@@ -65,7 +66,7 @@ def compute_median_params_from_kde(
 
 def plot_param_percentiles(
     ax: Any,
-    samples: numpy.ndarray,
+    samples: NDArray[Any],
     orientation: str,
 ) -> None:
     p16, p50, p84 = numpy.percentile(
