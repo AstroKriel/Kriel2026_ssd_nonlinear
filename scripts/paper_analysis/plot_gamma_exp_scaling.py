@@ -68,9 +68,19 @@ def overlay_scalings(
     ## subsonic scaling
     subsonic_fit = fit_series.fit_line_with_fixed_slope(
         GaussianSeries(
-            x_values=numpy.array([s.log10_Re.p50 for s in suite_stats_list if s.log10_Mach.p50 < 0]),
+            x_values=numpy.array(
+                [
+                    _suite_stats.log10_Re.p50
+                    for _suite_stats in suite_stats_list
+                    if _suite_stats.log10_Mach.p50 < 0
+                ]
+            ),
             y_values=numpy.array(
-                [s.log10_gamma_exp_times_t0.p50 for s in suite_stats_list if s.log10_Mach.p50 < 0],
+                [
+                    _suite_stats.log10_gamma_exp_times_t0.p50
+                    for _suite_stats in suite_stats_list
+                    if _suite_stats.log10_Mach.p50 < 0
+                ],
             ),
         ),
         fixed_slope=0.5,
@@ -100,14 +110,24 @@ def overlay_scalings(
         x_alignment="center",
         y_alignment="center",
         rotate_deg=subsonic_rotation,
-        text_color=palette.mpl_cmap(palette.mpl_norm(-1.0)),  # type: ignore[arg-type]
+        text_color=palette.mpl_cmap(palette.mpl_norm(-1.0)),
     )
     ## supersonic scaling
     supersonic_fit = fit_series.fit_line_with_fixed_slope(
         GaussianSeries(
-            x_values=numpy.array([s.log10_Re.p50 for s in suite_stats_list if s.log10_Mach.p50 > 0]),
+            x_values=numpy.array(
+                [
+                    _suite_stats.log10_Re.p50
+                    for _suite_stats in suite_stats_list
+                    if _suite_stats.log10_Mach.p50 > 0
+                ]
+            ),
             y_values=numpy.array(
-                [s.log10_gamma_exp_times_t0.p50 for s in suite_stats_list if s.log10_Mach.p50 > 0],
+                [
+                    _suite_stats.log10_gamma_exp_times_t0.p50
+                    for _suite_stats in suite_stats_list
+                    if _suite_stats.log10_Mach.p50 > 0
+                ],
             ),
         ),
         fixed_slope=1 / 3,
@@ -137,7 +157,7 @@ def overlay_scalings(
         x_alignment="center",
         y_alignment="center",
         rotate_deg=supersonic_rotation,
-        text_color=palette.mpl_cmap(palette.mpl_norm(1.0)),  # type: ignore[arg-type]
+        text_color=palette.mpl_cmap(palette.mpl_norm(1.0)),
     )
 
 
@@ -150,7 +170,7 @@ def style_axis(
     ax.set_ylim((Y_MIN, Y_MAX))
     x_ticks = [3.1, 3.3, 3.5, 3.7]
     ax.set_xticks(x_ticks)
-    ax.set_xticklabels(f"{x:.1f}" for x in x_ticks)
+    ax.set_xticklabels(f"{_tick:.1f}" for _tick in x_ticks)
     ax.set_xlabel(r"$\log_{10}(\mathrm{Re})$")
     ax.set_ylabel(r"$\log_{10}(\gamma_\mathrm{exp} \,t_0)$")
     add_color.add_colorbar(

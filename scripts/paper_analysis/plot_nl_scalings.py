@@ -10,6 +10,7 @@ from typing import Any
 
 ## third-party
 import numpy
+from numpy.typing import NDArray
 
 ## personal
 from jormi.ww_io import manage_io
@@ -43,7 +44,7 @@ def generate_line(
     domain_aspect_ratio: float = 1.0,
     num_points: int = 2,
     direction: float = 1,
-) -> tuple[numpy.ndarray, numpy.ndarray]:
+) -> tuple[NDArray[Any], NDArray[Any]]:
     x_min, x_max, y_min, y_max = domain_bounds
     data_aspect_ratio = (x_max - x_min) / (y_max - y_min)
     scale_x = 1.0
@@ -110,8 +111,20 @@ def overlay_scalings(
     ## subsonic growth rate
     subsonic_fit = fit_series.fit_line_with_fixed_slope(
         GaussianSeries(
-            x_values=numpy.array([s.log10_Mach.p50 for s in suite_stats_list if s.log10_Mach.p50 < 0]),
-            y_values=numpy.array([s.log10_alpha_nl.p50 for s in suite_stats_list if s.log10_Mach.p50 < 0]),
+            x_values=numpy.array(
+                [
+                    _suite_stats.log10_Mach.p50
+                    for _suite_stats in suite_stats_list
+                    if _suite_stats.log10_Mach.p50 < 0
+                ]
+            ),
+            y_values=numpy.array(
+                [
+                    _suite_stats.log10_alpha_nl.p50
+                    for _suite_stats in suite_stats_list
+                    if _suite_stats.log10_Mach.p50 < 0
+                ]
+            ),
         ),
         fixed_slope=3,
     )
@@ -130,8 +143,20 @@ def overlay_scalings(
     ## supersonic growth rate
     supersonic_fit = fit_series.fit_linear_model(
         GaussianSeries(
-            x_values=numpy.array([s.log10_Mach.p50 for s in suite_stats_list if s.log10_Mach.p50 > -0.2]),
-            y_values=numpy.array([s.log10_alpha_nl.p50 for s in suite_stats_list if s.log10_Mach.p50 > -0.2]),
+            x_values=numpy.array(
+                [
+                    _suite_stats.log10_Mach.p50
+                    for _suite_stats in suite_stats_list
+                    if _suite_stats.log10_Mach.p50 > -0.2
+                ]
+            ),
+            y_values=numpy.array(
+                [
+                    _suite_stats.log10_alpha_nl.p50
+                    for _suite_stats in suite_stats_list
+                    if _suite_stats.log10_Mach.p50 > -0.2
+                ]
+            ),
         ),
     )
     supersonic_label = (
@@ -149,9 +174,13 @@ def overlay_scalings(
     ## universal duration
     duration_fit = fit_series.fit_line_with_fixed_slope(
         GaussianSeries(
-            x_values=numpy.array([s.log10_Mach.p50 for s in suite_stats_list]),
-            y_values=numpy.array([s.log10_nl_duration_normed_by_t0.p50 for s in suite_stats_list]),
-            y_sigmas=numpy.array([s.log10_nl_duration_normed_by_t0.std_hi for s in suite_stats_list]),
+            x_values=numpy.array([_suite_stats.log10_Mach.p50 for _suite_stats in suite_stats_list]),
+            y_values=numpy.array(
+                [_suite_stats.log10_nl_duration_normed_by_t0.p50 for _suite_stats in suite_stats_list]
+            ),
+            y_sigmas=numpy.array(
+                [_suite_stats.log10_nl_duration_normed_by_t0.std_hi for _suite_stats in suite_stats_list]
+            ),
         ),
         fixed_slope=0,
     )
@@ -175,7 +204,7 @@ def overlay_scalings(
         ax=axs[0],
         x_values=x_values,
         y_values=numpy.log10(3 / 38 * 2) + 3 * x_values,
-        color=model_color,  # type: ignore[arg-type]
+        color=model_color,
         linestyle="-",
         linewidth=1.75,
         alpha=1.0,
@@ -185,7 +214,7 @@ def overlay_scalings(
         ax=axs[0],
         x_values=x_values,
         y_values=numpy.log10(0.05 * 2) + 3 * x_values,
-        color=model_color,  # type: ignore[arg-type]
+        color=model_color,
         linestyle="--",
         linewidth=1.75,
         alpha=1.0,
@@ -213,7 +242,7 @@ def overlay_scalings(
     annotate_axis.add_custom_legend(
         ax=axs[0],
         artists=["-", "--"],
-        colors=[model_color, model_color],  # type: ignore[list-item]
+        colors=[model_color, model_color],
         labels=[
             r"$(3/38) \, u_0^3 / \ell_0$",
             r"$0.05 \, u_0^3 / \ell_0$",
@@ -237,7 +266,7 @@ def style_axes(
     axs[0].set_xticklabels([])
     axs[1].set_xlabel(r"$\log_{10}(\mathcal{M})$")
     axs[0].set_ylabel(r"$\log_{10}(\alpha_{\rm nl})$")
-    axs[1].set_ylabel(r"$\log_{10}\big((t_{\rm sat} - t_{\rm nl}) / t_0\big)$")
+    axs[1].set_ylabel(r"$\log_{10}((t_{\rm sat} - t_{\rm nl}) / t_0)$")
     axs[0].set_xlim([X_MIN, X_MAX])
     axs[1].set_xlim([X_MIN, X_MAX])
     axs[0].set_ylim([AX0_Y_MIN, AX0_Y_MAX])
@@ -254,7 +283,7 @@ def style_axes(
     )
     cbar_ticks = [3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7]
     cbar.set_ticks(cbar_ticks)
-    cbar.set_ticklabels([f"{t:.1f}" for t in cbar_ticks])
+    cbar.set_ticklabels([f"{_tick:.1f}" for _tick in cbar_ticks])
     annotate_axis.add_custom_legend(
         ax=axs[1],
         artists=plot_helpers.RESOLUTION_LEGEND_ARTISTS,

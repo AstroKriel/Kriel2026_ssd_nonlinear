@@ -21,6 +21,8 @@ def get_max_loglikelihood(
     ll_path = manage_io.combine_file_path_parts(
         [sim_dir, model_name, "bin_per_t0", f"stage2_{model_name}_fitted_log_likelihoods.npy"],
     )
+    if not ll_path.exists():
+        return None
     ll_data = numpy.load(ll_path)
     return numpy.max(ll_data)
 
@@ -41,7 +43,7 @@ def get_linear_model_weight(
 
 def main() -> None:
     script_dir = Path(__file__).parent
-    dataset_dir = (script_dir / ".." / "datasets").resolve()
+    dataset_dir = (script_dir / ".." / ".." / "datasets").resolve()
     sim_dirs = manage_io.ItemFilter(
         req_include_words="Mach",
         include_files=False,

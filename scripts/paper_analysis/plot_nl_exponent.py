@@ -30,7 +30,7 @@ Y_MIN, Y_MAX = 2.95, 3.8
 
 def load_dataset(
     datasets_dir: Path,
-) -> dict:
+) -> dict[str, Any]:
     dataset_path = datasets_dir / "summary.json"
     dataset = json_io.read_json_file_into_dict(dataset_path)
     for suite_name in dataset:
@@ -84,7 +84,7 @@ def style_axis(
     )
     cbar_ticks = [1.0, 1.25, 1.5, 1.75, 2.0]
     cbar.set_ticks(cbar_ticks)
-    cbar.set_ticklabels([f"{t}" for t in cbar_ticks])
+    cbar.set_ticklabels([f"{_tick}" for _tick in cbar_ticks])
     annotate_axis.add_custom_legend(
         ax=ax,
         artists=plot_helpers.RESOLUTION_LEGEND_ARTISTS,

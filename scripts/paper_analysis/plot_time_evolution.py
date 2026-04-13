@@ -13,6 +13,7 @@ from typing import Any
 
 ## third-party
 import numpy
+from numpy.typing import NDArray
 
 ## personal
 from jormi import ww_lists
@@ -34,8 +35,8 @@ import plot_helpers
 class SimInstance:
     t_0: float
     target_Mach: float
-    time_values: numpy.ndarray
-    Emag_values: numpy.ndarray
+    time_values: NDArray[Any]
+    Emag_values: NDArray[Any]
 
     def __post_init__(self) -> None:
         if len(self.time_values) != len(self.Emag_values):
@@ -91,14 +92,18 @@ def plot_series(
     axs: Any,
     ax_inset: Any,
     sim_collections: dict[str, list[SimInstance]],
-    all_results: dict,
+    all_results: dict[str, Any],
     palette_Mach: DivergingPalette,
     num_points: int = 10**3,
 ) -> None:
     for sim_name, sim_instances in sim_collections.items():
-        Emag_sat = all_results[sim_name]["fit_summaries"]["free"]["bin_per_t0"]["sat_energy"]["p50"]
-        biggest_t_min = numpy.max([numpy.min(s.time_values) for s in sim_instances])
-        smallest_t_max = numpy.min([numpy.max(s.time_values) for s in sim_instances])
+        free_fits = all_results.get(sim_name, {}).get("fit_summaries", {}).get("free", {})
+        if "bin_per_t0" not in free_fits:
+            print(f"Skipping {sim_name}: no free fit data in summary_stats.json")
+            continue
+        Emag_sat = free_fits["bin_per_t0"]["sat_energy"]["p50"]
+        biggest_t_min = numpy.max([numpy.min(_sim.time_values) for _sim in sim_instances])
+        smallest_t_max = numpy.min([numpy.max(_sim.time_values) for _sim in sim_instances])
         interp_time_values = numpy.linspace(biggest_t_min, smallest_t_max, num_points)
         Emag_matrix_list = []
         for sim_instance in sim_instances:
