@@ -5,10 +5,11 @@
 ##
 
 ## stdlib
-from typing import Any, Callable, NamedTuple
+from typing import Any, Callable, NamedTuple, final
 
 ## third-party
 import numpy
+from numpy.typing import NDArray
 
 ## personal
 from jormi import ww_lists
@@ -23,9 +24,9 @@ from jormi.ww_plots import manage_plots, annotate_axis
 
 class KDEProjectionParams(
         NamedTuple, ):
-    posterior_samples: numpy.ndarray
-    posterior_kde: Callable
-    param_ranges: list[tuple]
+    posterior_samples: NDArray[Any]
+    posterior_kde: Callable[[NDArray[Any]], NDArray[Any]]
+    param_ranges: list[tuple[float, float]]
     col_index: int
     row_index: int
     grid_resolution: int = 20
@@ -37,6 +38,7 @@ class KDEProjectionParams(
 ##
 
 
+@final
 class PlotModelPosteriors:
 
     def __init__(
@@ -79,8 +81,8 @@ class PlotModelPosteriors:
 
     def _plot_posteriors(
         self,
-        posterior_samples: numpy.ndarray,
-        posterior_kde: Callable,
+        posterior_samples: NDArray[Any],
+        posterior_kde: Callable[[NDArray[Any]], NDArray[Any]],
         param_labels: list[str],
         fig_name: str,
     ) -> None:
@@ -111,7 +113,7 @@ class PlotModelPosteriors:
         self,
         ax: Any,
         param_index: int,
-        posterior_samples: numpy.ndarray,
+        posterior_samples: NDArray[Any],
         param_labels: list[str],
     ) -> tuple[float, float]:
         pdf_result = compute_array_stats.estimate_pdf(
@@ -137,7 +139,7 @@ class PlotModelPosteriors:
             ax.set_xticklabels([])
         pdf_threshold = 0.05 * numpy.max(estimated_pdf)
         index_start = ww_lists.get_index_of_first_crossing(
-            values=[float(v) for v in estimated_pdf],
+            values=[float(value) for value in estimated_pdf],
             target=pdf_threshold,
             direction="rising",
         )
@@ -146,7 +148,7 @@ class PlotModelPosteriors:
             param_max = bin_centers[-1]
         else:
             index_stop = ww_lists.get_index_of_first_crossing(
-                values=[float(v) for v in estimated_pdf[index_start:]],
+                values=[float(value) for value in estimated_pdf[index_start:]],
                 target=pdf_threshold,
                 direction="falling",
             )
@@ -169,7 +171,7 @@ class PlotModelPosteriors:
         ax: Any,
         row_index: int,
         col_index: int,
-        posterior_samples: numpy.ndarray,
+        posterior_samples: NDArray[Any],
     ) -> None:
         jpdf_result = compute_array_stats.estimate_jpdf(
             data_x=posterior_samples[:, col_index],
@@ -195,22 +197,25 @@ class PlotModelPosteriors:
     def _annotate_plot(
         self,
         axs: Any,
-        param_ranges: list[tuple[float, float]],
+        _param_ranges: list[tuple[float, float]],
         param_labels: list[str],
     ) -> None:
         for row_index in range(self.num_params):
             for col_index in range(self.num_params):
                 ax = axs[row_index, col_index]
-                if col_index > row_index: continue
+                if col_index > row_index:
+                    continue
                 if row_index == col_index:
                     # ax.set_xlim(param_ranges[row_index][0], param_ranges[row_index][1]) # debug
-                    if col_index > 0: ax.tick_params(axis="y", labelright=True)
+                    if col_index > 0:
+                        ax.tick_params(axis="y", labelright=True)
                 else:
                     # ax.set_xlim(param_ranges[col_index][0], param_ranges[col_index][1]) # debug
                     # ax.set_ylim(param_ranges[row_index][0], param_ranges[row_index][1]) # debug
                     if col_index == 0:
                         ax.set_ylabel(param_labels[row_index])
-                    if col_index > 0: ax.set_yticklabels([])
+                    if col_index > 0:
+                        ax.set_yticklabels([])
                 if row_index == self.num_params - 1:
                     ax.set_xlabel(param_labels[col_index])
                 else:
@@ -219,13 +224,14 @@ class PlotModelPosteriors:
     def _plot_kde_projections(
         self,
         axs: Any,
-        posterior_samples: numpy.ndarray,
-        posterior_kde: Callable,
+        posterior_samples: NDArray[Any],
+        posterior_kde: Callable[[NDArray[Any]], NDArray[Any]],
         param_ranges: list[tuple[float, float]],
     ) -> None:
         for row_index in range(self.num_params):
             for col_index in range(self.num_params):
-                if col_index >= row_index: continue
+                if col_index >= row_index:
+                    continue
                 print(f"Estimating KDE projection for axs[{row_index}][{col_index}]")
                 params = KDEProjectionParams(
                     posterior_samples=posterior_samples,
@@ -248,7 +254,7 @@ class PlotModelPosteriors:
     def _compute_2d_kde_projection(
         self,
         params: KDEProjectionParams,
-    ) -> tuple[numpy.ndarray, numpy.ndarray, numpy.ndarray]:
+    ) -> tuple[NDArray[Any], NDArray[Any], NDArray[Any]]:
         marginalized_param_indices = [
             param_index for param_index in range(self.num_params)
             if (param_index != params.col_index) and (param_index != params.row_index)

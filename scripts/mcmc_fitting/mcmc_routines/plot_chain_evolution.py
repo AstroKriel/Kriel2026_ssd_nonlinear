@@ -5,7 +5,7 @@
 ##
 
 ## stdlib
-from typing import Any
+from typing import Any, final
 
 ## third-party
 import numpy
@@ -19,6 +19,7 @@ from jormi.ww_plots import manage_plots, annotate_axis
 ##
 
 
+@final
 class PlotChainEvolution:
 
     def __init__(

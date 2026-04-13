@@ -32,9 +32,9 @@ from . import plot_model_fits
 
 class BaseMCMCRoutine(ABC):
     """
-  Base class for running MCMC inference using emcee. 
-  Subclasses must define a model and parameter validation logic.
-  """
+    Base class for running MCMC inference using emcee. 
+    Subclasses must define a model and parameter validation logic.
+    """
 
     ## methods that need to be implemented by each subclass
 

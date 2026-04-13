@@ -5,7 +5,7 @@
 ##
 
 ## stdlib
-from typing import Any
+from typing import Any, final
 
 ## third-party
 import numpy
@@ -19,6 +19,7 @@ from jormi.ww_io import manage_io
 ##
 
 
+@final
 class PlotFinalFits:
 
     def __init__(

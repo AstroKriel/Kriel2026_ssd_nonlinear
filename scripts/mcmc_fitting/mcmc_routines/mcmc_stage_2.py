@@ -117,7 +117,7 @@ class Stage2MCMCRoutine(
             sigma=2,
         )
         max_sat_time_index = ww_lists.get_index_of_first_crossing(
-            values=[float(v) for v in dlny_dt],
+            values=[float(value) for value in dlny_dt],
             target=0,
         )
         self.max_sat_time: float = float(used_time_values[max_sat_time_index])
@@ -130,7 +130,7 @@ class Stage2MCMCRoutine(
         ## use half the peak dE/dt before saturation as the threshold for the non-linear transition
         target_dy_dt = float(0.5 * numpy.max(dy_dt[:max_sat_time_index]))
         max_nl_time_index = ww_lists.get_index_of_first_crossing(
-            values=[float(v) for v in dy_dt[:max_sat_time_index]],
+            values=[float(value) for value in dy_dt[:max_sat_time_index]],
             target=target_dy_dt,
         )
         self.max_nl_time: float = float(used_time_values[max_nl_time_index])
