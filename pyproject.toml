@@ -14,7 +14,11 @@ dependencies = [
 ]
 
 [tool.uv.sources]
-jormi = { git = "https://github.com/AstroKriel/PythonHelpers.git", rev = "031f175ddb23c3eea9abf5a0f67ff640a38559a4" }
+jormi = {
+    git = "https://github.com/AstroKriel/PythonHelpers.git",
+    rev = "c9eaba8eafa5f515082ce29f337e01a4377e0cb4"
+}
+
 
 [tool.pyright]
 include = ["scripts"]
@@ -26,3 +30,5 @@ reportUnknownVariableType = "none"  # cascade from untyped third-party packages;
 reportImplicitOverride = "none"     # too verbose to require @override on every subclass method
 reportMissingTypeStubs = "none"     # emcee, tqdm, and other deps ship no stubs; not actionable
 reportImplicitStringConcatenation = "none"  # implicit string concat is used intentionally
+reportImplicitRelativeImport = "none"       # scripts use implicit relative imports intentionally
+reportUnusedCallResult = "none"             # argparse.add_argument returns Action; never used by convention
