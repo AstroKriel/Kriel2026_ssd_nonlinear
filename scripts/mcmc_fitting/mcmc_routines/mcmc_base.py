@@ -92,35 +92,36 @@ class BaseMCMCRoutine(ABC):
         data_label: str | None = None,
         fitted_param_labels: list[str] | None = None,
     ) -> None:
-        self.routine_name = routine_name
-        self.output_directory = output_directory
-        self.x_values = numpy.asarray(x_values)
-        self.y_values = numpy.asarray(y_values)
-        self.likelihood_sigma = likelihood_sigma
-        self.initial_params = initial_params
-        self.num_params = len(self.initial_params)
+        self.routine_name: str = routine_name
+        self.output_directory: str | Path = output_directory
+        self.x_values: NDArray[Any] = numpy.asarray(x_values)
+        self.y_values: NDArray[Any] = numpy.asarray(y_values)
+        self.likelihood_sigma: list[Any] | NDArray[Any] = likelihood_sigma
+        self.initial_params: tuple[float, ...] = initial_params
+        self.num_params: int = len(self.initial_params)
         self._prior_logpdf: Callable[..., Any] | None = prior_kde.logpdf if (prior_kde is not None) else None
-        self.data_label = data_label
-        self.fitted_param_labels = fitted_param_labels if (fitted_param_labels is not None) else []
-        self.plot_posterior_kde = plot_posterior_kde
+        self.data_label: str | None = data_label
+        self.fitted_param_labels: list[str] = fitted_param_labels if (fitted_param_labels is not None) else []
+        self.plot_posterior_kde: bool = plot_posterior_kde
         self._validate_inputs()
-        ## define key outputs
+        ## sampler state (set during estimate_posterior)
+        self.num_walkers: int = 0
+        self.num_steps: int = 0
+        ## outputs (set during estimate_posterior)
         self.raw_chain: NDArray[Any] | None = None
         self.auto_correlation_time: NDArray[Any] | None = None
         self.fitted_posterior_samples: NDArray[Any] | None = None
+        self.fitted_log_likelihoods: NDArray[Any] | None = None
         self.fitted_posterior_kde: gaussian_kde | None = None
         self.output_posterior_samples: NDArray[Any] | None = None
         self.output_posterior_kde: gaussian_kde | None = None
+        self.output_param_labels: list[str] = []
+        self.acceptance_fraction: NDArray[Any] | None = None
+        self.convergence_summary: dict[str, Any] | None = None
 
     def _validate_inputs(
         self,
     ) -> None:
-        if not isinstance(self.x_values, (list, numpy.ndarray)):
-            raise ValueError(f"`x_values` should either be a list or array of values.")
-        if not isinstance(self.y_values, (list, numpy.ndarray)):
-            raise ValueError(f"`y_values` should either be a list or array of values.")
-        if not isinstance(self.likelihood_sigma, (list, numpy.ndarray)):
-            raise ValueError(f"`likelihood_sigma` should either be a list or array of values.")
         if len(self.x_values) != len(self.y_values):
             raise ValueError(
                 f"`x_values` and `y_values` should be the same length. Received {len(self.x_values)} vs {len(self.y_values)}.",
@@ -128,10 +129,6 @@ class BaseMCMCRoutine(ABC):
         if len(self.x_values) != len(self.likelihood_sigma):
             raise ValueError(
                 f"`x_values` and `likelihood_sigma` should be the same length. Received {len(self.x_values)} vs {len(self.likelihood_sigma)}.",
-            )
-        if not isinstance(self.initial_params, tuple):
-            raise ValueError(
-                f"`initial_params` should be a tuple. Received {type(self.initial_params)}.",
             )
 
     def estimate_posterior(
@@ -141,7 +138,7 @@ class BaseMCMCRoutine(ABC):
         burn_in_steps: int = 3_000,
     ) -> None:
         if not numpy.all(self._get_valid_params_mask(numpy.asarray(self.initial_params))):
-            raise ValueError(f"Initial guess is invalid!")
+            raise ValueError("Initial guess is invalid!")
         print("Estimating the posterior...")
         num_params = len(self.initial_params)
         self.num_walkers = num_walkers_per_param * num_params
@@ -158,7 +155,7 @@ class BaseMCMCRoutine(ABC):
             log_prob_fn=self._log_posterior,
             vectorize=True,
         )
-        deque(
+        _ = deque(
             tqdm(
                 mcmc_sampler.sample(initial_state=perturbed_params, iterations=int(num_steps)),
                 total=int(num_steps),
@@ -171,7 +168,7 @@ class BaseMCMCRoutine(ABC):
         low, high = float(numpy.min(acc_fracs)), float(numpy.max(acc_fracs))
         print(f"Acceptance fraction: median={median_acc:.3f} [{low:.3f}, {high:.3f}]")
         self.raw_chain = mcmc_sampler.get_chain()
-        self._check_chain_convergence(mcmc_sampler)
+        _ = self._check_chain_convergence(mcmc_sampler)
         self.fitted_posterior_samples = mcmc_sampler.get_chain(
             discard=int(burn_in_steps),
             # thin=10,
@@ -252,7 +249,7 @@ class BaseMCMCRoutine(ABC):
                 numpy.square(y_residuals_2d / likelihood_sigma_2d),
                 axis=1,
             )
-        except Exception as error:
+        except Exception:
             raise
         return ll_values
 
@@ -321,16 +318,10 @@ class BaseMCMCRoutine(ABC):
                 )
             else:
                 print(f"WARNING: Chain likely too short: n_steps={nstep} < 5x tau_max~{tau_max:.1f}.")
-            print(
-                f"Autocorr time (median/max): {tau_med:.1f}/{tau_max:.1f} steps; "
-                f"approx. ESS median/min: {ess_med:.0f}/{ess_min:.0f} out of N={N_raw} raw samples.",
-            )
+            print(f"Autocorr time (median/max): {tau_med:.1f}/{tau_max:.1f} steps; approx. ESS median/min: {ess_med:.0f}/{ess_min:.0f} out of N={N_raw} raw samples.")
         except emcee.autocorr.AutocorrError:
             # Fall back to a softer message if tau is unreliable at current length
-            print(
-                "WARNING: Could not reliably estimate autocorrelation time (chain likely too short). "
-                "Proceeding with visual/heuristic checks.",
-            )
+            print("WARNING: Could not reliably estimate autocorrelation time (chain likely too short). Proceeding with visual/heuristic checks.")
             self.auto_correlation_time = None
             summary["autocorr_time"] = None
             summary["ess"] = None
@@ -358,6 +349,7 @@ class BaseMCMCRoutine(ABC):
             [self.output_directory, f"{self.routine_name}_fitted_log_likelihoods.npy"],
         )
         assert self.fitted_posterior_samples is not None
+        assert self.fitted_log_likelihoods is not None
         assert self.output_posterior_samples is not None
         numpy.save(fitted_posterior_path, self.fitted_posterior_samples)
         numpy.save(log_likelihood_path, self.fitted_log_likelihoods)

@@ -62,7 +62,7 @@ class Stage2MCMCRoutine(
             initial_params[3],  # t_nl
             guess_sat_time,  # t_sat
         ]
-        self.fixed_nl_exponent = fixed_nl_exponent
+        self.fixed_nl_exponent: float | None = fixed_nl_exponent
         if self.fixed_nl_exponent is None:
             fitted_param_labels.append(r"$p$")
             all_initial_params.append(1.5)  # nl_exponent
@@ -87,7 +87,7 @@ class Stage2MCMCRoutine(
         ave_energy_values: list[Any] | NDArray[Any],
         max_num_bins: int = 100,
     ) -> float:
-        self.max_sim_time = numpy.max(time_values)
+        self.max_sim_time: float = float(numpy.max(time_values))
         if len(time_values) > max_num_bins:
             time_bin_edges = numpy.linspace(
                 numpy.min(time_values),
@@ -99,7 +99,8 @@ class Stage2MCMCRoutine(
             binned_ave_energy_values = []
             for time_bin_index in range(max_num_bins):
                 time_bin_mask = (time_bin_indices == time_bin_index)
-                if not numpy.any(time_bin_mask): continue
+                if not numpy.any(time_bin_mask):
+                    continue
                 binned_time_values.append(numpy.mean(time_values[time_bin_mask]))
                 binned_ave_energy_values.append(numpy.mean(ave_energy_values[time_bin_mask]))
             used_time_values = numpy.asarray(binned_time_values)
@@ -119,7 +120,7 @@ class Stage2MCMCRoutine(
             values=[float(v) for v in dlny_dt],
             target=0,
         )
-        self.max_sat_time = used_time_values[max_sat_time_index]
+        self.max_sat_time: float = float(used_time_values[max_sat_time_index])
         ## define max time to transition into nonlinear phase
         ## note, make sure this happens before the saturated phase
         dy_dt = numpy.gradient(
@@ -131,7 +132,7 @@ class Stage2MCMCRoutine(
             values=[float(v) for v in dy_dt[:max_sat_time_index]],
             target=target_dy_dt,
         )
-        self.max_nl_time = used_time_values[max_nl_time_index]
+        self.max_nl_time: float = float(used_time_values[max_nl_time_index])
         ## construct a valid guess for the transition time into the saturated phase
         guess_sat_time = self.max_nl_time + 0.5 * (self.max_sat_time - self.max_nl_time)
         return float(guess_sat_time)
@@ -300,7 +301,7 @@ class Stage2MCMCRoutine_free(
 
     def __init__(
         self,
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         super().__init__(
             fixed_nl_exponent=None,
@@ -314,7 +315,7 @@ class Stage2MCMCRoutine_linear(
 
     def __init__(
         self,
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         super().__init__(
             fixed_nl_exponent=1.0,
@@ -328,7 +329,7 @@ class Stage2MCMCRoutine_quadratic(
 
     def __init__(
         self,
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         super().__init__(
             fixed_nl_exponent=2.0,

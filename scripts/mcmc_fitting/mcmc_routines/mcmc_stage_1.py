@@ -36,8 +36,8 @@ class Stage1MCMCRoutine(mcmc_base.BaseMCMCRoutine):
         assert len(
             initial_params,
         ) == 3, ("Stage 1 MCMC routine expects 3 initial params: log10(E_init), gamma_exp, and t_approx")
-        self.log10_e = numpy.log10(numpy.exp(1))
-        self.max_sim_time = numpy.max(time_values)
+        self.log10_e: float = numpy.log10(numpy.exp(1))
+        self.max_sim_time: float = numpy.max(time_values)
         super().__init__(
             routine_name="stage1",
             output_directory=output_directory,
