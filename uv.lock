@@ -217,7 +217,7 @@ wheels = [
 [[package]]
 name = "jormi"
 version = "0.1.0"
-source = { git = "https://github.com/AstroKriel/PythonHelpers.git?rev=031f175ddb23c3eea9abf5a0f67ff640a38559a4#031f175ddb23c3eea9abf5a0f67ff640a38559a4" }
+source = { git = "https://github.com/AstroKriel/PythonHelpers.git?rev=16d5e720b586431de3f4a3b9c3f3e49ddf3a49a2#16d5e720b586431de3f4a3b9c3f3e49ddf3a49a2" }
 dependencies = [
     { name = "cmasher" },
     { name = "h5py" },
@@ -313,7 +313,7 @@ dependencies = [
 requires-dist = [
     { name = "corner", specifier = ">=2.2.3" },
     { name = "emcee", specifier = ">=3.1.6" },
-    { name = "jormi", git = "https://github.com/AstroKriel/PythonHelpers.git?rev=031f175ddb23c3eea9abf5a0f67ff640a38559a4" },
+    { name = "jormi", git = "https://github.com/AstroKriel/PythonHelpers.git?rev=16d5e720b586431de3f4a3b9c3f3e49ddf3a49a2" },
     { name = "scikit-learn", specifier = ">=1.6.1" },
     { name = "scipy", specifier = ">=1.15.2" },
 ]
