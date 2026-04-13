@@ -42,13 +42,15 @@ class BaseMCMCRoutine(ABC):
     def _model(
         self,
         param_vectors: NDArray[Any],
-    ) -> NDArray[Any]: ...
+    ) -> NDArray[Any]:
+        ...
 
     @abstractmethod
     def _get_valid_params_mask(
         self,
         param_vectors: NDArray[Any],
-    ) -> NDArray[Any]: ...
+    ) -> NDArray[Any]:
+        ...
 
     ## hooks that can be overwritten by each subclass
 
@@ -56,6 +58,7 @@ class BaseMCMCRoutine(ABC):
         self,
         param_vectors: NDArray[Any],
     ) -> NDArray[Any]:
+        ## by default all params are passed to the prior KDE; override to select a subset
         return numpy.asarray(param_vectors)
 
     def _get_output_params(
@@ -117,18 +120,19 @@ class BaseMCMCRoutine(ABC):
         self.output_posterior_kde: gaussian_kde | None = None
         self.output_param_labels: list[str] = []
         self.acceptance_fraction: NDArray[Any] | None = None
-        self.convergence_summary: dict[str, Any] | None = None
 
     def _validate_inputs(
         self,
     ) -> None:
         if len(self.x_values) != len(self.y_values):
             raise ValueError(
-                f"`x_values` and `y_values` should be the same length. Received {len(self.x_values)} vs {len(self.y_values)}.",
+                "`x_values` and `y_values` should be the same length."
+                f" Received {len(self.x_values)} vs {len(self.y_values)}.",
             )
         if len(self.x_values) != len(self.likelihood_sigma):
             raise ValueError(
-                f"`x_values` and `likelihood_sigma` should be the same length. Received {len(self.x_values)} vs {len(self.likelihood_sigma)}.",
+                "`x_values` and `likelihood_sigma` should be the same length."
+                f" Received {len(self.x_values)} vs {len(self.likelihood_sigma)}.",
             )
 
     def estimate_posterior(
@@ -143,12 +147,14 @@ class BaseMCMCRoutine(ABC):
         num_params = len(self.initial_params)
         self.num_walkers = num_walkers_per_param * num_params
         self.num_steps = num_steps
+        ## initialise walkers with a small perturbation around the initial guess
         perturbed_params = numpy.array(
             self.initial_params,
         ) + 1e-3 * numpy.random.randn(
             self.num_walkers,
             self.num_params,
         )
+        ## run sampler
         mcmc_sampler = emcee.EnsembleSampler(
             nwalkers=self.num_walkers,
             ndim=self.num_params,
@@ -162,13 +168,8 @@ class BaseMCMCRoutine(ABC):
             ),
             maxlen=0,  # discard returned samples; deque is only used to force evaluation of the generator
         )
-        ## save key outputs
-        acc_fracs = mcmc_sampler.acceptance_fraction  # shape: (nwalkers,)
-        median_acc = float(numpy.median(acc_fracs))
-        low, high = float(numpy.min(acc_fracs)), float(numpy.max(acc_fracs))
-        print(f"Acceptance fraction: median={median_acc:.3f} [{low:.3f}, {high:.3f}]")
         self.raw_chain = mcmc_sampler.get_chain()
-        _ = self._check_chain_convergence(mcmc_sampler)
+        self._check_chain_convergence(mcmc_sampler)
         self.fitted_posterior_samples = mcmc_sampler.get_chain(
             discard=int(burn_in_steps),
             # thin=10,
@@ -178,6 +179,7 @@ class BaseMCMCRoutine(ABC):
         self.fitted_log_likelihoods = self._log_likelihood(self.fitted_posterior_samples)
         self.output_posterior_samples, self.output_param_labels = self._get_output_params()
         assert self.output_posterior_samples is not None
+        ## estimate posterior KDE(s)
         if numpy.array_equal(self.output_posterior_samples, self.fitted_posterior_samples):
             print("Estimating the KDE of only the fitted posterior...")
             self.fitted_posterior_kde = gaussian_kde(
@@ -253,81 +255,55 @@ class BaseMCMCRoutine(ABC):
             raise
         return ll_values
 
-    def _check_chain_convergence(self, mcmc_sampler: emcee.EnsembleSampler) -> dict[str, Any]:
-        """
-        Run lightweight convergence diagnostics on the *raw* emcee chain.
-        Reports (a) acceptance fractions, (b) integrated autocorrelation times tau,
-        and (c) approximate effective sample sizes (ESS). Sets attributes on `self`
-        and returns a summary dict.
-        """
-        summary: dict[str, Any] = {}
-        # --- Acceptance fraction diagnostics (always available)
+    def _check_chain_convergence(
+        self,
+        mcmc_sampler: emcee.EnsembleSampler,
+    ) -> None:
+        ## acceptance fraction
         acc_fracs = numpy.asarray(mcmc_sampler.acceptance_fraction, dtype=float)
         if acc_fracs.size:
             acc_med = float(numpy.median(acc_fracs))
             acc_min = float(numpy.min(acc_fracs))
             acc_max = float(numpy.max(acc_fracs))
-            summary["acceptance_fraction"] = {
-                "median": acc_med,
-                "min": acc_min,
-                "max": acc_max,
-                "per_walker": acc_fracs.tolist(),
-            }
-            # Heuristic guidance band
+            self.acceptance_fraction = acc_fracs
             if acc_med < 0.15:
                 print(f"WARNING: Low median acceptance fraction ({acc_med:.3f}); chains may be stuck.")
             elif acc_med > 0.70:
                 print(f"WARNING: High median acceptance fraction ({acc_med:.3f}); steps may be too small.")
             else:
                 print(f"Acceptance fraction OK: median={acc_med:.3f} [{acc_min:.3f}, {acc_max:.3f}]")
-            # Store on self for later reporting if you like
-            self.acceptance_fraction = acc_fracs
         else:
             print("NOTE: Sampler did not report acceptance fractions.")
-        # --- Autocorrelation time and ESS
-        nwalk = self.num_walkers
+        ## autocorrelation time and ESS
+        ## tol=0: most conservative estimate; raises if chain is too short
         nstep = int(self.num_steps)
         try:
-            # tol=0 gives the most conservative estimate; it will raise if chain is too short
             tau = numpy.asarray(mcmc_sampler.get_autocorr_time(tol=0), dtype=float)  # shape: (ndim,)
             self.auto_correlation_time = tau
             tau_med = float(numpy.median(tau))
             tau_max = float(numpy.max(tau))
-            summary["autocorr_time"] = {"per_param": tau.tolist(), "median": tau_med, "max": tau_max}
-            # Effective sample size per parameter (rough heuristic): N / (2*tau)
-            # where N = nwalkers * nsteps (raw, unthinned)
-            N_raw = nwalk * nstep
-            ess = (N_raw / (2.0 * tau))
+            ## ESS heuristic: N / (2*tau), where N = nwalkers * nsteps
+            N_raw = self.num_walkers * nstep
+            ess = N_raw / (2.0 * tau)
             ess_med = float(numpy.median(ess))
             ess_min = float(numpy.min(ess))
-            summary["ess"] = {
-                "per_param": ess.tolist(),
-                "median": ess_med,
-                "min": ess_min,
-                "N_raw": int(N_raw),
-            }
-            # Simple convergence gates based on tau
-            # - Good: nstep >= 50 * tau_max
-            # - Borderline: 5 * tau_max <= nstep < 50 * tau_max
-            # - Poor: nstep < 5 * tau_max
+            print(
+                f"Autocorr time (median/max): {tau_med:.1f}/{tau_max:.1f} steps; approx. ESS median/min: {ess_med:.0f}/{ess_min:.0f} out of N={N_raw} raw samples."
+            )
+            ## convergence gates: good >= 50*tau, borderline >= 5*tau, poor < 5*tau
             if nstep >= 50 * tau_max:
                 print(f"Chains appear converged: n_steps={nstep} >= 50x tau_max~{tau_max:.1f}.")
             elif nstep >= 5 * tau_max:
                 print(
-                    f"WARNING: Borderline length: n_steps={nstep} is between 5x and 50x tau_max~{tau_max:.1f}.",
+                    f"WARNING: Borderline length: n_steps={nstep} is between 5x and 50x tau_max~{tau_max:.1f}."
                 )
             else:
                 print(f"WARNING: Chain likely too short: n_steps={nstep} < 5x tau_max~{tau_max:.1f}.")
-            print(f"Autocorr time (median/max): {tau_med:.1f}/{tau_max:.1f} steps; approx. ESS median/min: {ess_med:.0f}/{ess_min:.0f} out of N={N_raw} raw samples.")
         except emcee.autocorr.AutocorrError:
-            # Fall back to a softer message if tau is unreliable at current length
-            print("WARNING: Could not reliably estimate autocorrelation time (chain likely too short). Proceeding with visual/heuristic checks.")
+            print(
+                "WARNING: Could not reliably estimate autocorrelation time (chain likely too short). Proceeding with visual/heuristic checks."
+            )
             self.auto_correlation_time = None
-            summary["autocorr_time"] = None
-            summary["ess"] = None
-        # Optionally store a compact dict on self for later reporting
-        self.convergence_summary = summary
-        return summary
 
     def _make_plots(
         self,
