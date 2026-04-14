@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import TypedDict
 
 ## personal
+from jormi.ww_fns import parallel_dispatch
 from jormi.ww_io import manage_io
 
 ##
@@ -18,6 +19,7 @@ from jormi.ww_io import manage_io
 ##
 
 ALLOW_OVERWRITE = False
+MAX_PARALLEL_JOBS: int | None = 4
 
 ##
 ## === CONSTANTS
@@ -92,6 +94,7 @@ def main() -> None:
     all_sim_directories = manage_io.ItemFilter(
         req_include_words=["Mach", "Re", "Pm", "Nres"],
     ).filter(directory=SIMS_DIR)
+    pending_jobs: list[tuple[Path, str, int | None]] = []
     for sim_directory in sorted(all_sim_directories):
         for model_name in MODEL_TYPES:
             for binning_config in BINNING_CONFIGS:
@@ -100,8 +103,16 @@ def main() -> None:
                 if not ALLOW_OVERWRITE and output_exists(sim_directory, model_name, binning_tag):
                     print(f"Skipping (already fitted): {sim_directory.name} / {model_name} / {binning_tag}")
                     continue
-                print(f"Fitting: {sim_directory.name} / {model_name} / {binning_tag}")
-                run_fit(sim_directory, model_name, num_bins)
+                print(f"Queuing: {sim_directory.name} / {model_name} / {binning_tag}")
+                pending_jobs.append((sim_directory, model_name, num_bins))
+    if not pending_jobs:
+        print("Nothing to fit.")
+        return
+    parallel_dispatch.run_in_parallel(
+        worker_fn=run_fit,
+        grouped_args=pending_jobs,
+        num_workers=MAX_PARALLEL_JOBS,
+    )
 
 
 ##
