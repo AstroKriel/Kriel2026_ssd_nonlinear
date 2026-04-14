@@ -27,6 +27,7 @@ SCRIPT_DIR = Path(__file__).parent
 UV_PROJECT = (SCRIPT_DIR / ".." / "..").resolve()
 SIMS_DIR = (SCRIPT_DIR / ".." / ".." / "datasets" / "sims").resolve()
 
+
 class BinningConfig(TypedDict):
     tag: str
     num_bins: int | None
@@ -38,8 +39,14 @@ MODEL_TYPES = [
     "quadratic",
 ]
 BINNING_CONFIGS: list[BinningConfig] = [
-    {"tag": "bin_per_t0", "num_bins": None},
-    {"tag": "100bins",    "num_bins": 100},
+    {
+        "tag": "bin_per_t0",
+        "num_bins": None,
+    },
+    {
+        "tag": "100bins",
+        "num_bins": 100,
+    },
 ]
 
 ##
@@ -66,8 +73,10 @@ def run_fit(
     cmd = [
         sys.executable,
         str(SCRIPT_DIR / "fit_with_mcmc.py"),
-        "-data_directory", str(sim_directory),
-        "-model", model_name,
+        "-data_directory",
+        str(sim_directory),
+        "-model",
+        model_name,
     ]
     if num_bins is not None:
         cmd += ["-num_bins", str(num_bins)]

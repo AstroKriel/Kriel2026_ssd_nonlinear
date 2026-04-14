@@ -26,6 +26,7 @@ SCRIPT_DIR = Path(__file__).parent
 UV_PROJECT = (SCRIPT_DIR / ".." / "..").resolve()
 SIMS_DIR = (SCRIPT_DIR / ".." / ".." / "datasets" / "sims").resolve()
 
+
 class BinningConfig(TypedDict):
     tag: str
     num_bins: int | None
@@ -37,8 +38,14 @@ MODEL_TYPES = [
     "quadratic",
 ]
 BINNING_CONFIGS: list[BinningConfig] = [
-    {"tag": "bin_per_t0", "num_bins": None},
-    {"tag": "100bins",    "num_bins": 100},
+    {
+        "tag": "bin_per_t0",
+        "num_bins": None
+    },
+    {
+        "tag": "100bins",
+        "num_bins": 100
+    },
 ]
 
 ##
@@ -52,10 +59,7 @@ def output_exists(
     binning_tag: str,
 ) -> bool:
     posterior_path = (
-        sim_directory
-        / model_name
-        / binning_tag
-        / f"stage2_{model_name}_fitted_posterior_samples.npy"
+        sim_directory / model_name / binning_tag / f"stage2_{model_name}_fitted_posterior_samples.npy"
     )
     return posterior_path.exists()
 
@@ -69,7 +73,7 @@ def submit_job(
     binning_tag = "bin_per_t0" if (num_bins is None) else f"{num_bins}bins"
     if not ALLOW_OVERWRITE and output_exists(data_directory, model_name, binning_tag):
         print(
-            f"Skipping (already fitted): {data_directory.name} / {model_name} / {binning_tag}"
+            f"Skipping (already fitted): {data_directory.name} / {model_name} / {binning_tag}",
         )
         return
     tag_name = f"{data_directory.name}_{model_name}_{binning_tag}"
@@ -112,9 +116,7 @@ def main() -> None:
         req_include_words=["Mach", "Re", "Pm", "Nres"],
     ).filter(directory=SIMS_DIR)
     current_queue = pbs_manager.get_list_of_queued_jobs()
-    queued_job_tags: list[str] = (
-        [job_tag for _, job_tag in current_queue] if current_queue else []
-    )
+    queued_job_tags: list[str] = ([job_tag for _, job_tag in current_queue] if current_queue else [])
     for sim_directory in sorted(all_sim_directories):
         for model_name in MODEL_TYPES:
             for binning_config in BINNING_CONFIGS:
