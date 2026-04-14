@@ -129,17 +129,9 @@ class Stage1MCMCRoutine(mcmc_base.BaseMCMCRoutine):
         assert self.fitted_posterior_samples is not None
         log10_gamma_samples = self.log10_e * self.fitted_posterior_samples[:, 1]
         transition_time_samples = self.fitted_posterior_samples[:, 2]
-        mcmc_utils.plot_param_percentiles(
-            axs[1],
-            log10_gamma_samples,
-            orientation="horizontal",
-        )
+        mcmc_utils.plot_param_percentiles_h(axs[1], log10_gamma_samples)
         for row_index in range(len(axs)):
-            mcmc_utils.plot_param_percentiles(
-                axs[row_index],
-                transition_time_samples,
-                orientation="vertical",
-            )
+            mcmc_utils.plot_param_percentiles_v(axs[row_index], transition_time_samples)
 
     def _get_output_params(
         self,
@@ -169,11 +161,7 @@ class Stage1MCMCRoutine(mcmc_base.BaseMCMCRoutine):
     ) -> None:
         assert self.output_posterior_samples is not None
         log10_sat_energy_samples = self.output_posterior_samples[:, 1]
-        mcmc_utils.plot_param_percentiles(
-            axs[0],
-            log10_sat_energy_samples,
-            orientation="horizontal",
-        )
+        mcmc_utils.plot_param_percentiles_h(axs[0], log10_sat_energy_samples)
 
 
 ## } MODULE

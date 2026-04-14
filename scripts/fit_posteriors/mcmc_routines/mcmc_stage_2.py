@@ -264,22 +264,10 @@ class Stage2MCMCRoutine(
         sat_energy_samples = 10**self.fitted_posterior_samples[:, 1]
         nl_start_time_samples = self.fitted_posterior_samples[:, 3]
         sat_start_time_samples = self.fitted_posterior_samples[:, 4]
-        mcmc_utils.plot_param_percentiles(
-            axs[0],
-            sat_energy_samples,
-            orientation="horizontal",
-        )
+        mcmc_utils.plot_param_percentiles_h(axs[0], sat_energy_samples)
         for row_index in range(len(axs)):
-            mcmc_utils.plot_param_percentiles(
-                axs[row_index],
-                nl_start_time_samples,
-                orientation="vertical",
-            )
-            mcmc_utils.plot_param_percentiles(
-                axs[row_index],
-                sat_start_time_samples,
-                orientation="vertical",
-            )
+            mcmc_utils.plot_param_percentiles_v(axs[row_index], nl_start_time_samples)
+            mcmc_utils.plot_param_percentiles_v(axs[row_index], sat_start_time_samples)
             axs[row_index].axvline(
                 self.max_nl_time,
                 color="red",
