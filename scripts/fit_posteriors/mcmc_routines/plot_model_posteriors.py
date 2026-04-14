@@ -49,6 +49,7 @@ class PlotModelPosteriors:
         self.routine_name = mcmc_routine.routine_name
         self.num_params = mcmc_routine.num_params
         self.plot_posterior_kde = mcmc_routine.plot_posterior_kde
+        self.show_progress = mcmc_routine.show_progress
         ## fitted params
         self.fitted_posterior_samples = mcmc_routine.fitted_posterior_samples
         self.fitted_posterior_kde = mcmc_routine.fitted_posterior_kde
@@ -232,7 +233,8 @@ class PlotModelPosteriors:
             for col_index in range(self.num_params):
                 if col_index >= row_index:
                     continue
-                print(f"Estimating KDE projection for axs[{row_index}][{col_index}]")
+                if self.show_progress:
+                    print(f"Estimating KDE projection for axs[{row_index}][{col_index}]")
                 params = KDEProjectionParams(
                     posterior_samples=posterior_samples,
                     posterior_kde=posterior_kde,

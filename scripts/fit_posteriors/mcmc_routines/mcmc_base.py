@@ -120,6 +120,7 @@ class BaseMCMCRoutine(ABC):
         self.output_posterior_kde: gaussian_kde | None = None
         self.output_param_labels: list[str] = []
         self.acceptance_fraction: NDArray[Any] | None = None
+        self.show_progress: bool = True
 
     def _validate_inputs(
         self,
@@ -140,10 +141,13 @@ class BaseMCMCRoutine(ABC):
         num_walkers_per_param: int = 10,
         num_steps: int = 10_000,
         burn_in_steps: int = 3_000,
+        show_progress: bool = True,
     ) -> None:
         if not numpy.all(self._get_valid_params_mask(numpy.asarray(self.initial_params))):
             raise ValueError("Initial guess is invalid!")
-        print("Estimating the posterior...")
+        self.show_progress = show_progress
+        if show_progress:
+            print("Estimating the posterior...")
         num_params = len(self.initial_params)
         self.num_walkers = num_walkers_per_param * num_params
         self.num_steps = num_steps
@@ -165,6 +169,7 @@ class BaseMCMCRoutine(ABC):
             tqdm(
                 mcmc_sampler.sample(initial_state=perturbed_params, iterations=int(num_steps)),
                 total=int(num_steps),
+                disable=not show_progress,
             ),
             maxlen=0,  # discard returned samples; deque is only used to force evaluation of the generator
         )
@@ -183,14 +188,16 @@ class BaseMCMCRoutine(ABC):
         ## subsample to cap KDE evaluation cost (O(N) per query) without losing distributional fidelity
         max_kde_samples = 5_000
         if numpy.array_equal(self.output_posterior_samples, self.fitted_posterior_samples):
-            print("Estimating the KDE of only the fitted posterior...")
+            if show_progress:
+                print("Estimating the KDE of only the fitted posterior...")
             self.fitted_posterior_kde = gaussian_kde(
                 self._subsample_for_kde(self.fitted_posterior_samples, max_kde_samples).T,
                 bw_method="scott",
             )
             self.output_posterior_kde = self.fitted_posterior_kde
         else:
-            print("Estimating the KDE of both the fitted and output posteriors...")
+            if show_progress:
+                print("Estimating the KDE of both the fitted and output posteriors...")
             self.fitted_posterior_kde = gaussian_kde(
                 self._subsample_for_kde(self.fitted_posterior_samples, max_kde_samples).T,
                 bw_method="scott",
@@ -268,13 +275,14 @@ class BaseMCMCRoutine(ABC):
             acc_min = float(numpy.min(acc_fracs))
             acc_max = float(numpy.max(acc_fracs))
             self.acceptance_fraction = acc_fracs
-            if acc_med < 0.15:
-                print(f"WARNING: Low median acceptance fraction ({acc_med:.3f}); chains may be stuck.")
-            elif acc_med > 0.70:
-                print(f"WARNING: High median acceptance fraction ({acc_med:.3f}); steps may be too small.")
-            else:
-                print(f"Acceptance fraction OK: median={acc_med:.3f} [{acc_min:.3f}, {acc_max:.3f}]")
-        else:
+            if self.show_progress:
+                if acc_med < 0.15:
+                    print(f"WARNING: Low median acceptance fraction ({acc_med:.3f}); chains may be stuck.")
+                elif acc_med > 0.70:
+                    print(f"WARNING: High median acceptance fraction ({acc_med:.3f}); steps may be too small.")
+                else:
+                    print(f"Acceptance fraction OK: median={acc_med:.3f} [{acc_min:.3f}, {acc_max:.3f}]")
+        elif self.show_progress:
             print("NOTE: Sampler did not report acceptance fractions.")
         ## autocorrelation time and ESS
         ## tol=0: most conservative estimate; raises if chain is too short
@@ -282,29 +290,24 @@ class BaseMCMCRoutine(ABC):
         try:
             tau = numpy.asarray(mcmc_sampler.get_autocorr_time(tol=0), dtype=float)  # shape: (ndim,)
             self.auto_correlation_time = tau
-            tau_med = float(numpy.median(tau))
-            tau_max = float(numpy.max(tau))
-            ## ESS heuristic: N / (2*tau), where N = nwalkers * nsteps
-            N_raw = self.num_walkers * nstep
-            ess = N_raw / (2.0 * tau)
-            ess_med = float(numpy.median(ess))
-            ess_min = float(numpy.min(ess))
-            print(
-                f"Autocorr time (median/max): {tau_med:.1f}/{tau_max:.1f} steps; approx. ESS median/min: {ess_med:.0f}/{ess_min:.0f} out of N={N_raw} raw samples.",
-            )
-            ## convergence gates: good >= 50*tau, borderline >= 5*tau, poor < 5*tau
-            if nstep >= 50 * tau_max:
-                print(f"Chains appear converged: n_steps={nstep} >= 50x tau_max~{tau_max:.1f}.")
-            elif nstep >= 5 * tau_max:
-                print(
-                    f"WARNING: Borderline length: n_steps={nstep} is between 5x and 50x tau_max~{tau_max:.1f}.",
-                )
-            else:
-                print(f"WARNING: Chain likely too short: n_steps={nstep} < 5x tau_max~{tau_max:.1f}.")
+            if self.show_progress:
+                tau_med = float(numpy.median(tau))
+                tau_max = float(numpy.max(tau))
+                ## ESS heuristic: N / (2*tau), where N = nwalkers * nsteps
+                N_raw = self.num_walkers * nstep
+                ess = N_raw / (2.0 * tau)
+                ess_med = float(numpy.median(ess))
+                ess_min = float(numpy.min(ess))
+                print(f"Autocorr time (median/max): {tau_med:.1f}/{tau_max:.1f} steps; approx. ESS median/min: {ess_med:.0f}/{ess_min:.0f} out of N={N_raw} raw samples.")
+                if nstep >= 50 * tau_max:
+                    print(f"Chains appear converged: n_steps={nstep} >= 50x tau_max~{tau_max:.1f}.")
+                elif nstep >= 5 * tau_max:
+                    print(f"WARNING: Borderline length: n_steps={nstep} is between 5x and 50x tau_max~{tau_max:.1f}.")
+                else:
+                    print(f"WARNING: Chain likely too short: n_steps={nstep} < 5x tau_max~{tau_max:.1f}.")
         except emcee.autocorr.AutocorrError:
-            print(
-                "WARNING: Could not reliably estimate autocorrelation time (chain likely too short). Proceeding with visual/heuristic checks.",
-            )
+            if self.show_progress:
+                print("WARNING: Could not reliably estimate autocorrelation time (chain likely too short). Proceeding with visual/heuristic checks.")
             self.auto_correlation_time = None
 
     def _subsample_for_kde(

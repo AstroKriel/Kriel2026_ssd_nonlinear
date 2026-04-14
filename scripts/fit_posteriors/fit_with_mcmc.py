@@ -40,20 +40,26 @@ def main() -> None:
         default=None,
         help="Number of bins. Default: one bin per eddy-turnover time.",
     )
+    parser.add_argument(
+        "-no_progress",
+        action="store_true",
+        default=False,
+        help="Suppress the MCMC progress bar.",
+    )
     args = parser.parse_args()
     data_directory = Path(args.data_directory).resolve()
     model_name = args.model
     num_bins = args.num_bins
+    show_progress = not args.no_progress
     if num_bins is None:
         binning_notice = "one bin per eddy-turnover time"
         binning_tag = "bin_per_t0"
     else:
         binning_notice = f"{num_bins} bins"
         binning_tag = f"{num_bins}bins"
-    print(f"Looking at: {data_directory}")
-    print(
-        f"Fitting the {model_name}-model to the nonlinear (backreaction) phase with {binning_notice}.",
-    )
+    if show_progress:
+        print(f"Looking at: {data_directory}")
+        print(f"Fitting the {model_name}-model to the nonlinear (backreaction) phase with {binning_notice}.")
     ## read in magnetic energy evolution
     output_directory = manage_io.combine_file_path_parts([data_directory, model_name, binning_tag])
     manage_io.init_directory(output_directory)
@@ -83,7 +89,8 @@ def main() -> None:
             0.5,  # log10(E_sat)
             0.5 * max_subset_time,  # transition time
         )
-        print("Running stage 1.")
+        if show_progress:
+            print("Running stage 1.")
         stage1_mcmc = Stage1MCMCRoutine(
             output_directory=output_directory,
             time_values=binned_data["x_bin_centers"],
@@ -92,18 +99,18 @@ def main() -> None:
             initial_params=stage1_initial_params,
             plot_posterior_kde=False,
         )
-        stage1_mcmc.estimate_posterior()
+        stage1_mcmc.estimate_posterior(show_progress=show_progress)
         assert stage1_mcmc.fitted_posterior_samples is not None
         stage1_median_transition_time = numpy.median(stage1_mcmc.fitted_posterior_samples[:, 2])
         sat_fraction_of_subset_time = stage1_median_transition_time / max_subset_time
         sat_percent_of_subset_time = 100 * sat_fraction_of_subset_time
-        print(
-            f"Estimated stage 1 transition time: {stage1_median_transition_time:.2f} ({sat_percent_of_subset_time:.1f}% of max trimmed time)",
-        )
+        if show_progress:
+            print(f"Estimated stage 1 transition time: {stage1_median_transition_time:.2f} ({sat_percent_of_subset_time:.1f}% of max trimmed time)")
         if sat_fraction_of_subset_time >= max_sat_fraction_of_subset_time:
             break
         max_subset_time *= 0.85  # trim off 15% of tail
-        print(f"Trimmed to {max_subset_time:.2f}, re-running stage 1...")
+        if show_progress:
+            print(f"Trimmed to {max_subset_time:.2f}, re-running stage 1...")
     stage1_mcmc.plot_posterior_kde = True
     stage1_mcmc.make_plots()
     ## extract key outputs from stage 1
@@ -117,7 +124,8 @@ def main() -> None:
         0.5 * stage1_median_transition_time,  # t_nl
     )
     ## run stage 2 fitter
-    print("Running stage 2.")
+    if show_progress:
+        print("Running stage 2.")
     stage2_classes = {
         "linear": Stage2MCMCRoutine_linear,
         "quadratic": Stage2MCMCRoutine_quadratic,
@@ -132,7 +140,7 @@ def main() -> None:
         prior_kde=stage2_prior_kde,
         plot_posterior_kde=True,
     )
-    stage2_mcmc.estimate_posterior()
+    stage2_mcmc.estimate_posterior(show_progress=show_progress)
     ## plot the measured vs modelled energy evolution (both linear and log10-transformed energy)
     PlotFinalFits(stage2_mcmc).plot()
 
