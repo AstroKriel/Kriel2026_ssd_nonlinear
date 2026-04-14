@@ -180,21 +180,23 @@ class BaseMCMCRoutine(ABC):
         self.output_posterior_samples, self.output_param_labels = self._get_output_params()
         assert self.output_posterior_samples is not None
         ## estimate posterior KDE(s)
+        ## subsample to cap KDE evaluation cost (O(N) per query) without losing distributional fidelity
+        max_kde_samples = 5_000
         if numpy.array_equal(self.output_posterior_samples, self.fitted_posterior_samples):
             print("Estimating the KDE of only the fitted posterior...")
             self.fitted_posterior_kde = gaussian_kde(
-                self.fitted_posterior_samples.T,
+                self._subsample_for_kde(self.fitted_posterior_samples, max_kde_samples).T,
                 bw_method="scott",
             )
             self.output_posterior_kde = self.fitted_posterior_kde
         else:
             print("Estimating the KDE of both the fitted and output posteriors...")
             self.fitted_posterior_kde = gaussian_kde(
-                self.fitted_posterior_samples.T,
+                self._subsample_for_kde(self.fitted_posterior_samples, max_kde_samples).T,
                 bw_method="scott",
             )
             self.output_posterior_kde = gaussian_kde(
-                self.output_posterior_samples.T,
+                self._subsample_for_kde(self.output_posterior_samples, max_kde_samples).T,
                 bw_method="scott",
             )
         ## create diagnostic outputs
@@ -304,6 +306,16 @@ class BaseMCMCRoutine(ABC):
                 "WARNING: Could not reliably estimate autocorrelation time (chain likely too short). Proceeding with visual/heuristic checks.",
             )
             self.auto_correlation_time = None
+
+    def _subsample_for_kde(
+        self,
+        samples: NDArray[Any],
+        max_samples: int,
+    ) -> NDArray[Any]:
+        if samples.shape[0] <= max_samples:
+            return samples
+        indices = numpy.random.choice(samples.shape[0], max_samples, replace=False)
+        return samples[indices]
 
     def make_plots(
         self,
