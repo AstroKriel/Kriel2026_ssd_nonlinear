@@ -125,7 +125,7 @@ def plot_series(
         target_Mach = sim_instances[0].target_Mach
         color = palette_Mach.mpl_cmap(palette_Mach.mpl_norm(numpy.log10(target_Mach)))
         index_start = ww_lists.get_index_of_closest_value(
-            values=numpy.log10(Emag_p50),
+            values=list(numpy.log10(Emag_p50)),
             target=-10,
         )
         t_shifted = (interp_time_values - interp_time_values[index_start]) / t_turb
@@ -205,8 +205,6 @@ def style_axes(
     ax_inset.set_xticks(ticks)
     ax_inset.set_xticklabels(f"{_tick}" for _tick in ticks)
     ax_inset.axhline(y=1, ls=":", color="black", zorder=100)
-    ax_inset.set_ylabel(r"$E_\mathrm{mag} / \mathrm{E_\mathrm{mag, sat}}$")
-    ax_inset.set_xlabel(r"$\log_{10}(t / t_\mathrm{sc})$", labelpad=8)
 
 
 ##
@@ -234,6 +232,8 @@ def main() -> None:
     ax_inset = manage_plots.add_inset_axis(
         ax=axs[0],
         bounds=(0.45, 0.1, 0.475, 0.5),
+        x_label=r"$\log_{10}(t / t_\mathrm{sc})$",
+        y_label=r"$E_\mathrm{mag} / \mathrm{E_\mathrm{mag, sat}}$",
         x_label_alignment="top",
         y_label_alignment="left",
     )
