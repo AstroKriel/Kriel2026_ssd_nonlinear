@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 
 ## personal
-from jormi.ww_io import manage_io, json_io
+from jormi.ww_io import manage_io
 from jormi.ww_plots import manage_plots, annotate_axis, add_color
 from jormi.ww_plots.color_palettes import SequentialPalette
 
@@ -26,19 +26,6 @@ Y_MIN, Y_MAX = 2.95, 3.8
 ##
 ## === PIPELINE STAGES
 ##
-
-
-def load_dataset(
-    datasets_dir: Path,
-) -> dict[str, Any]:
-    dataset_path = datasets_dir / "summary.json"
-    dataset = json_io.read_json_file_into_dict(dataset_path)
-    for suite_name in dataset:
-        sim_path = datasets_dir / "sims" / f"{suite_name}v1" / "sim_data.json"
-        sim_data = json_io.read_json_file_into_dict(sim_path)
-        dataset[suite_name]["input"]["target_Mach"] = sim_data["details"]["target_Mach"]
-        dataset[suite_name]["input"]["target_Re"] = sim_data["details"]["target_Re"]
-    return dataset
 
 
 def plot_suites(
@@ -107,11 +94,6 @@ def style_axis(
 def main() -> None:
     figures_dir, datasets_dir = plot_helpers.resolve_paper_dirs(Path(__file__))
     manage_io.init_directory(figures_dir)
-    dataset = load_dataset(datasets_dir)
-    json_io.save_dict_to_json_file(
-        str(datasets_dir / "summary_v2.json"),
-        dataset,
-    )
     suite_stats_list = plot_helpers.load_suite_stats(datasets_dir)
     palette = SequentialPalette.from_name(
         palette_name="purple-white-green",
