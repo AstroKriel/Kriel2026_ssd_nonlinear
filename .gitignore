@@ -18,12 +18,19 @@ __pycache__/
 **.mp4
 **.gif
 
+## figures (tracked)
+!figures/*.pdf
+
 ## typical data products
 **.csv
 **.dat
 **.json
 **.npy
 **.h5
+
+## dataset summaries (tracked)
+!datasets/summary.json
+!datasets/summary_stats.json
 
 ## jupyter notebook (+ LSP) files
 .ipynb_checkpoints/
