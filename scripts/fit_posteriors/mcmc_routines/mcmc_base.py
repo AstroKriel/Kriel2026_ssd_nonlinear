@@ -279,7 +279,9 @@ class BaseMCMCRoutine(ABC):
                 if acc_med < 0.15:
                     print(f"WARNING: Low median acceptance fraction ({acc_med:.3f}); chains may be stuck.")
                 elif acc_med > 0.70:
-                    print(f"WARNING: High median acceptance fraction ({acc_med:.3f}); steps may be too small.")
+                    print(
+                        f"WARNING: High median acceptance fraction ({acc_med:.3f}); steps may be too small.",
+                    )
                 else:
                     print(f"Acceptance fraction OK: median={acc_med:.3f} [{acc_min:.3f}, {acc_max:.3f}]")
         elif self.show_progress:
@@ -298,16 +300,22 @@ class BaseMCMCRoutine(ABC):
                 ess = N_raw / (2.0 * tau)
                 ess_med = float(numpy.median(ess))
                 ess_min = float(numpy.min(ess))
-                print(f"Autocorr time (median/max): {tau_med:.1f}/{tau_max:.1f} steps; approx. ESS median/min: {ess_med:.0f}/{ess_min:.0f} out of N={N_raw} raw samples.")
+                print(
+                    f"Autocorr time (median/max): {tau_med:.1f}/{tau_max:.1f} steps; approx. ESS median/min: {ess_med:.0f}/{ess_min:.0f} out of N={N_raw} raw samples.",
+                )
                 if nstep >= 50 * tau_max:
                     print(f"Chains appear converged: n_steps={nstep} >= 50x tau_max~{tau_max:.1f}.")
                 elif nstep >= 5 * tau_max:
-                    print(f"WARNING: Borderline length: n_steps={nstep} is between 5x and 50x tau_max~{tau_max:.1f}.")
+                    print(
+                        f"WARNING: Borderline length: n_steps={nstep} is between 5x and 50x tau_max~{tau_max:.1f}.",
+                    )
                 else:
                     print(f"WARNING: Chain likely too short: n_steps={nstep} < 5x tau_max~{tau_max:.1f}.")
         except emcee.autocorr.AutocorrError:
             if self.show_progress:
-                print("WARNING: Could not reliably estimate autocorrelation time (chain likely too short). Proceeding with visual/heuristic checks.")
+                print(
+                    "WARNING: Could not reliably estimate autocorrelation time (chain likely too short). Proceeding with visual/heuristic checks.",
+                )
             self.auto_correlation_time = None
 
     def _subsample_for_kde(

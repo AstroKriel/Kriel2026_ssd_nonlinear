@@ -40,11 +40,11 @@ MODEL_TYPES = [
 BINNING_CONFIGS: list[BinningConfig] = [
     {
         "tag": "bin_per_t0",
-        "num_bins": None
+        "num_bins": None,
     },
     {
         "tag": "100bins",
-        "num_bins": 100
+        "num_bins": 100,
     },
 ]
 

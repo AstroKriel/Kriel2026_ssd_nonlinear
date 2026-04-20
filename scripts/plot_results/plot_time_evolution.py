@@ -38,7 +38,9 @@ class SimInstance:
     time_values: NDArray[Any]
     Emag_values: NDArray[Any]
 
-    def __post_init__(self) -> None:
+    def __post_init__(
+        self,
+    ) -> None:
         if len(self.time_values) != len(self.Emag_values):
             raise ValueError(
                 f"time_values and Emag_values must have the same length, "

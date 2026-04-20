@@ -116,14 +116,14 @@ def overlay_scalings(
                     _suite_stats.log10_Mach.p50
                     for _suite_stats in suite_stats_list
                     if _suite_stats.log10_Mach.p50 < 0
-                ]
+                ],
             ),
             y_values=numpy.array(
                 [
                     _suite_stats.log10_alpha_nl.p50
                     for _suite_stats in suite_stats_list
                     if _suite_stats.log10_Mach.p50 < 0
-                ]
+                ],
             ),
         ),
         fixed_slope=3,
@@ -148,14 +148,14 @@ def overlay_scalings(
                     _suite_stats.log10_Mach.p50
                     for _suite_stats in suite_stats_list
                     if _suite_stats.log10_Mach.p50 > -0.2
-                ]
+                ],
             ),
             y_values=numpy.array(
                 [
                     _suite_stats.log10_alpha_nl.p50
                     for _suite_stats in suite_stats_list
                     if _suite_stats.log10_Mach.p50 > -0.2
-                ]
+                ],
             ),
         ),
     )
@@ -176,10 +176,10 @@ def overlay_scalings(
         GaussianSeries(
             x_values=numpy.array([_suite_stats.log10_Mach.p50 for _suite_stats in suite_stats_list]),
             y_values=numpy.array(
-                [_suite_stats.log10_nl_duration_normed_by_t0.p50 for _suite_stats in suite_stats_list]
+                [_suite_stats.log10_nl_duration_normed_by_t0.p50 for _suite_stats in suite_stats_list],
             ),
             y_sigmas=numpy.array(
-                [_suite_stats.log10_nl_duration_normed_by_t0.std_hi for _suite_stats in suite_stats_list]
+                [_suite_stats.log10_nl_duration_normed_by_t0.std_hi for _suite_stats in suite_stats_list],
             ),
         ),
         fixed_slope=0,

@@ -73,7 +73,7 @@ def overlay_scalings(
                     _suite_stats.log10_Re.p50
                     for _suite_stats in suite_stats_list
                     if _suite_stats.log10_Mach.p50 < 0
-                ]
+                ],
             ),
             y_values=numpy.array(
                 [
@@ -120,7 +120,7 @@ def overlay_scalings(
                     _suite_stats.log10_Re.p50
                     for _suite_stats in suite_stats_list
                     if _suite_stats.log10_Mach.p50 > 0
-                ]
+                ],
             ),
             y_values=numpy.array(
                 [

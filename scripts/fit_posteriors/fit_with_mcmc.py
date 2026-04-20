@@ -105,7 +105,9 @@ def main() -> None:
         sat_fraction_of_subset_time = stage1_median_transition_time / max_subset_time
         sat_percent_of_subset_time = 100 * sat_fraction_of_subset_time
         if show_progress:
-            print(f"Estimated stage 1 transition time: {stage1_median_transition_time:.2f} ({sat_percent_of_subset_time:.1f}% of max trimmed time)")
+            print(
+                f"Estimated stage 1 transition time: {stage1_median_transition_time:.2f} ({sat_percent_of_subset_time:.1f}% of max trimmed time)",
+            )
         if sat_fraction_of_subset_time >= max_sat_fraction_of_subset_time:
             break
         max_subset_time *= 0.85  # trim off 15% of tail
