@@ -172,10 +172,9 @@ def main() -> None:
     datasets_dir = (script_dir / ".." / ".." / "datasets").resolve()
     output_summary_path = datasets_dir / "summary_stats.json"
     base_directory = datasets_dir / "sims"
-    all_directories = manage_io.ItemFilter(
+    all_directories = manage_io.filter_directory(
+        base_directory,
         req_include_words=["Mach", "Re", "Pm", "Nres"],
-    ).filter(
-        directory=base_directory,
     )
     sim_suites = set([str(sim_directory).split("/")[-1].split("v")[0] for sim_directory in all_directories])
     all_results = {}

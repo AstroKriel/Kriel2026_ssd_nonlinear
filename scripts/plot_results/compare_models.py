@@ -44,12 +44,10 @@ def get_linear_model_weight(
 def main() -> None:
     script_dir = Path(__file__).parent
     dataset_dir = (script_dir / ".." / ".." / "datasets").resolve()
-    sim_dirs = manage_io.ItemFilter(
+    sim_dirs = manage_io.filter_directory(
+        dataset_dir / "sims",
         req_include_words="Mach",
         include_files=False,
-        include_folders=True,
-    ).filter(
-        directory=dataset_dir / "sims",
     )
     num_sims = 0
     agreement = 0

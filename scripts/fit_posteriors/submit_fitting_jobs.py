@@ -112,9 +112,10 @@ def submit_job(
 
 
 def main() -> None:
-    all_sim_directories = manage_io.ItemFilter(
+    all_sim_directories = manage_io.filter_directory(
+        SIMS_DIR,
         req_include_words=["Mach", "Re", "Pm", "Nres"],
-    ).filter(directory=SIMS_DIR)
+    )
     current_queue = pbs_manager.get_list_of_queued_jobs()
     queued_job_tags: list[str] = ([job_tag for _, job_tag in current_queue] if current_queue else [])
     for sim_directory in sorted(all_sim_directories):

@@ -307,7 +307,7 @@ def style_axes(
 
 def main() -> None:
     figures_dir, datasets_dir = plot_helpers.resolve_paper_dirs(Path(__file__))
-    manage_io.init_directory(figures_dir)
+    manage_io.create_directory(figures_dir)
     suite_stats_list = plot_helpers.load_suite_stats(datasets_dir)
     palette = SequentialPalette.from_name(
         palette_name="white-brown",

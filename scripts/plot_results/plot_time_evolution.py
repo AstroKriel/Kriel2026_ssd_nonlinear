@@ -56,12 +56,14 @@ class SimInstance:
 def load_sim_collections(
     datasets_dir: Path,
 ) -> dict[str, list[SimInstance]]:
-    sim_paths_Nres576 = manage_io.ItemFilter(
+    sim_paths_Nres576 = manage_io.filter_directory(
+        datasets_dir / "sims",
         req_include_words=["Mach", "Re1500", "Pm1", "Nres576"],
-    ).filter(directory=datasets_dir / "sims")
-    sim_paths_Nres1152 = manage_io.ItemFilter(
+    )
+    sim_paths_Nres1152 = manage_io.filter_directory(
+        datasets_dir / "sims",
         req_include_words=["Mach", "Re1500", "Pm1", "Nres1152"],
-    ).filter(directory=datasets_dir / "sims")
+    )
     sim_paths = [
         _sim_path for _sim_path in sim_paths_Nres576
         if not any(_exclude in str(_sim_path) for _exclude in ["Mach0.3", "Mach0.5", "Mach0.8"])
@@ -216,7 +218,7 @@ def style_axes(
 
 def main() -> None:
     figures_dir, datasets_dir = plot_helpers.resolve_paper_dirs(Path(__file__))
-    manage_io.init_directory(figures_dir)
+    manage_io.create_directory(figures_dir)
     all_results = json_io.read_json_file_into_dict(datasets_dir / "summary_stats.json")
     palette_Mach = DivergingPalette.from_name(
         palette_name="blue-white-red",

@@ -91,9 +91,10 @@ def run_fit(
 
 
 def main() -> None:
-    all_sim_directories = manage_io.ItemFilter(
+    all_sim_directories = manage_io.filter_directory(
+        SIMS_DIR,
         req_include_words=["Mach", "Re", "Pm", "Nres"],
-    ).filter(directory=SIMS_DIR)
+    )
     pending_jobs: list[tuple[Path, str, int | None]] = []
     for sim_directory in sorted(all_sim_directories):
         for model_name in MODEL_TYPES:

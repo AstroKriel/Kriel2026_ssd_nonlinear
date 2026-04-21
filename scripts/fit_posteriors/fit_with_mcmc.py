@@ -62,7 +62,7 @@ def main() -> None:
         print(f"Fitting the {model_name}-model to the nonlinear (backreaction) phase with {binning_notice}.")
     ## read in magnetic energy evolution
     output_directory = manage_io.combine_file_path_parts([data_directory, model_name, binning_tag])
-    manage_io.init_directory(output_directory)
+    manage_io.create_directory(output_directory)
     data_filepath = manage_io.combine_file_path_parts([data_directory, "sim_data.json"])
     data_dict = json_io.read_json_file_into_dict(data_filepath)
     ## subset the simulation domain: roughly half of the data points should make up the growth phase
