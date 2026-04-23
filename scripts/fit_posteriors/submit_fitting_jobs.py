@@ -90,13 +90,13 @@ def submit_job(
     main_command = f"cd {SCRIPT_DIR} && " + " ".join(fitting_cmd_parts)
     file_name = f"{tag_name}.sh"
     pbs_manager.create_pbs_job_script(
-        system_name="gadi",
         directory=data_directory,
         file_name=file_name,
         main_command=main_command,
         tag_name=tag_name,
         queue_name="normal",
         num_procs=1,
+        memory_gb=4,
         wall_time_hours=4,
     )
     pbs_manager.submit_job(
