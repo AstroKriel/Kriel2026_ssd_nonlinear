@@ -13,10 +13,9 @@ import numpy
 
 ## personal
 from jormi.ww_io import manage_io
-from jormi.ww_data import fit_series
-from jormi.ww_plots import manage_plots, annotate_axis, add_color
-from jormi.ww_data.series_types import GaussianSeries
-from jormi.ww_plots.color_palettes import DivergingPalette
+from jormi.ww_data import fit_series, series_types
+from jormi.ww_plots import add_color, annotate_axis, color_palettes, manage_plots
+from jormi.ww_types import box_positions
 
 ## local
 import plot_helpers
@@ -37,7 +36,7 @@ def plot_suites(
     *,
     ax: Any,
     suite_stats_list: list[plot_helpers.SuiteStats],
-    palette: DivergingPalette,
+    palette: color_palettes.DivergingPalette,
 ) -> None:
     for suite in suite_stats_list:
         print("Looking at:", suite.suite_name)
@@ -60,14 +59,14 @@ def plot_suites(
 def overlay_scalings(
     *,
     ax: Any,
-    palette: DivergingPalette,
+    palette: color_palettes.DivergingPalette,
     suite_stats_list: list[plot_helpers.SuiteStats],
 ) -> None:
     x_values = numpy.linspace(3, 4, 100)
     rotation_bounds = (X_MIN, X_MAX, Y_MIN, Y_MAX)
     ## subsonic scaling
     subsonic_fit = fit_series.fit_line_with_fixed_slope(
-        GaussianSeries(
+        series_types.GaussianSeries(
             x_values=numpy.array(
                 [
                     _suite_stats.log10_Re.p50
@@ -107,14 +106,14 @@ def overlay_scalings(
         x_pos=0.585,
         y_pos=0.665,
         label=subsonic_label + r"$\, \mathrm{Re}^{1/2}$",
-        x_alignment="center",
-        y_alignment="center",
+        x_alignment=box_positions.MPLPositions.Align.Center.Center,
+        y_alignment=box_positions.MPLPositions.Align.Center.Center,
         rotate_deg=subsonic_rotation,
         text_color=palette.mpl_cmap(palette.mpl_norm(-1.0)),
     )
     ## supersonic scaling
     supersonic_fit = fit_series.fit_line_with_fixed_slope(
-        GaussianSeries(
+        series_types.GaussianSeries(
             x_values=numpy.array(
                 [
                     _suite_stats.log10_Re.p50
@@ -154,8 +153,8 @@ def overlay_scalings(
         x_pos=0.665,
         y_pos=0.15,
         label=supersonic_label + r"$\, \mathrm{Re}^{1/3}$",
-        x_alignment="center",
-        y_alignment="center",
+        x_alignment=box_positions.MPLPositions.Align.Center.Center,
+        y_alignment=box_positions.MPLPositions.Align.Center.Center,
         rotate_deg=supersonic_rotation,
         text_color=palette.mpl_cmap(palette.mpl_norm(1.0)),
     )
@@ -164,7 +163,7 @@ def overlay_scalings(
 def style_axis(
     *,
     ax: Any,
-    palette: DivergingPalette,
+    palette: color_palettes.DivergingPalette,
 ) -> None:
     ax.set_xlim((X_MIN, X_MAX))
     ax.set_ylim((Y_MIN, Y_MAX))
@@ -177,7 +176,7 @@ def style_axis(
         ax=ax,
         palette=palette,
         label=r"$\log_{10}(\mathcal{M})$",
-        cbar_side="top",
+        cbar_side=box_positions.Positions.Side.Top,
         label_size=24,
     )
     annotate_axis.add_custom_legend(
@@ -189,7 +188,7 @@ def style_axis(
         line_width=1.5,
         text_size=16,
         text_color="k",
-        anchor_at_corner="upper left",
+        anchor_at_corner=box_positions.MPLPositions.Anchor.Corner.TopLeft,
         anchor_point=(0.0, 1.0),
         num_cols=2,
         spacing=0.0,
@@ -205,7 +204,7 @@ def main() -> None:
     figures_dir, datasets_dir = plot_helpers.resolve_paper_dirs(Path(__file__))
     manage_io.create_directory(figures_dir)
     suite_stats_list = plot_helpers.load_suite_stats(datasets_dir)
-    palette = DivergingPalette.from_name(
+    palette = color_palettes.DivergingPalette.from_name(
         palette_name="blue-white-red",
         value_range=(-1.0, 1.0),
         mid_value=0.0,

@@ -14,10 +14,9 @@ from numpy.typing import NDArray
 
 ## personal
 from jormi.ww_io import manage_io
-from jormi.ww_data import fit_series
-from jormi.ww_plots import manage_plots, annotate_axis, add_color
-from jormi.ww_data.series_types import GaussianSeries
-from jormi.ww_plots.color_palettes import SequentialPalette
+from jormi.ww_data import fit_series, series_types
+from jormi.ww_plots import add_color, annotate_axis, color_palettes, manage_plots
+from jormi.ww_types import box_positions
 
 ## local
 import plot_helpers
@@ -68,7 +67,7 @@ def plot_suites(
     *,
     axs: Any,
     suite_stats_list: list[plot_helpers.SuiteStats],
-    palette: SequentialPalette,
+    palette: color_palettes.SequentialPalette,
 ) -> None:
     for suite in suite_stats_list:
         print("Looking at:", suite.suite_name)
@@ -103,14 +102,14 @@ def plot_suites(
 def overlay_scalings(
     *,
     axs: Any,
-    palette: SequentialPalette,
+    palette: color_palettes.SequentialPalette,
     suite_stats_list: list[plot_helpers.SuiteStats],
 ) -> None:
     x_values = numpy.linspace(-2, 2, 100)
     model_color = palette.mpl_cmap(0.7)
     ## subsonic growth rate
     subsonic_fit = fit_series.fit_line_with_fixed_slope(
-        GaussianSeries(
+        series_types.GaussianSeries(
             x_values=numpy.array(
                 [
                     _suite_stats.log10_Mach.p50
@@ -142,7 +141,7 @@ def overlay_scalings(
     )
     ## supersonic growth rate
     supersonic_fit = fit_series.fit_linear_model(
-        GaussianSeries(
+        series_types.GaussianSeries(
             x_values=numpy.array(
                 [
                     _suite_stats.log10_Mach.p50
@@ -173,7 +172,7 @@ def overlay_scalings(
     )
     ## universal duration
     duration_fit = fit_series.fit_line_with_fixed_slope(
-        GaussianSeries(
+        series_types.GaussianSeries(
             x_values=numpy.array([_suite_stats.log10_Mach.p50 for _suite_stats in suite_stats_list]),
             y_values=numpy.array(
                 [_suite_stats.log10_nl_duration_normed_by_t0.p50 for _suite_stats in suite_stats_list],
@@ -196,8 +195,8 @@ def overlay_scalings(
         y_pos=0.375,
         label=duration_label + r"$\, t_0 / t_\mathrm{sc}$",
         text_size=20,
-        x_alignment="left",
-        y_alignment="center",
+        x_alignment=box_positions.MPLPositions.Align.Side.Left,
+        y_alignment=box_positions.MPLPositions.Align.Center.Center,
     )
     ## reference models (xu & lazarian; beresnyak 2012)
     annotate_axis.overlay_curve(
@@ -233,7 +232,7 @@ def overlay_scalings(
         line_width=1.5,
         text_size=16,
         text_color="k",
-        anchor_at_corner="lower right",
+        anchor_at_corner=box_positions.MPLPositions.Anchor.Corner.BottomRight,
         anchor_point=(1.0, 0.025),
         num_cols=1,
         spacing=0.625,
@@ -251,7 +250,7 @@ def overlay_scalings(
         line_width=1.5,
         text_size=16,
         text_color="k",
-        anchor_at_corner="upper left",
+        anchor_at_corner=box_positions.MPLPositions.Anchor.Corner.TopLeft,
         anchor_point=(0.0, 0.99),
         num_cols=1,
         spacing=0.5,
@@ -261,7 +260,7 @@ def overlay_scalings(
 def style_axes(
     *,
     axs: Any,
-    palette: SequentialPalette,
+    palette: color_palettes.SequentialPalette,
 ) -> None:
     axs[0].set_xticklabels([])
     axs[1].set_xlabel(r"$\log_{10}(\mathcal{M})$")
@@ -277,7 +276,7 @@ def style_axes(
         ax=axs[0],
         palette=palette,
         label=r"$\log_{10}(\mathrm{Re})$",
-        cbar_side="top",
+        cbar_side=box_positions.Positions.Side.Top,
         cbar_pad=0.015,
         label_size=24,
     )
@@ -293,7 +292,7 @@ def style_axes(
         line_width=1.5,
         text_size=16,
         text_color="k",
-        anchor_at_corner="upper left",
+        anchor_at_corner=box_positions.MPLPositions.Anchor.Corner.TopLeft,
         anchor_point=(0.0, 1.0),
         num_cols=3,
         spacing=0.0,
@@ -309,7 +308,7 @@ def main() -> None:
     figures_dir, datasets_dir = plot_helpers.resolve_paper_dirs(Path(__file__))
     manage_io.create_directory(figures_dir)
     suite_stats_list = plot_helpers.load_suite_stats(datasets_dir)
-    palette = SequentialPalette.from_name(
+    palette = color_palettes.SequentialPalette.from_name(
         palette_name="white-brown",
         value_range=(3.1, 3.7),
         palette_range=(0.0, 0.7),

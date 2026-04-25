@@ -18,10 +18,9 @@ from numpy.typing import NDArray
 ## personal
 from jormi import ww_lists
 from jormi.ww_io import manage_io, json_io
-from jormi.ww_data import interpolate_series
-from jormi.ww_plots import manage_plots, add_color
-from jormi.ww_data.series_types import DataSeries
-from jormi.ww_plots.color_palettes import DivergingPalette
+from jormi.ww_data import interpolate_series, series_types
+from jormi.ww_plots import add_color, color_palettes, manage_plots
+from jormi.ww_types import box_positions
 
 ## local
 import plot_helpers
@@ -97,7 +96,7 @@ def plot_series(
     ax_inset: Any,
     sim_collections: dict[str, list[SimInstance]],
     all_results: dict[str, Any],
-    palette_Mach: DivergingPalette,
+    palette_Mach: color_palettes.DivergingPalette,
     num_points: int = 10**3,
 ) -> None:
     for sim_name, sim_instances in sim_collections.items():
@@ -112,7 +111,7 @@ def plot_series(
         Emag_matrix_list = []
         for sim_instance in sim_instances:
             interp_result = interpolate_series.interpolate_1d(
-                DataSeries(
+                series_types.DataSeries(
                     x_values=sim_instance.time_values,
                     y_values=sim_instance.Emag_values / Emag_sat,
                 ),
@@ -184,13 +183,13 @@ def style_axes(
     *,
     axs: Any,
     ax_inset: Any,
-    palette_Mach: DivergingPalette,
+    palette_Mach: color_palettes.DivergingPalette,
 ) -> None:
     add_color.add_colorbar(
         ax=axs[0],
         palette=palette_Mach,
         label=r"$\log_{10}(\mathcal{M})$",
-        cbar_side="top",
+        cbar_side=box_positions.Positions.Side.Top,
         cbar_pad=1e-2,
         label_size=24,
     )
@@ -220,7 +219,7 @@ def main() -> None:
     figures_dir, datasets_dir = plot_helpers.resolve_paper_dirs(Path(__file__))
     manage_io.create_directory(figures_dir)
     all_results = json_io.read_json_file_into_dict(datasets_dir / "summary_stats.json")
-    palette_Mach = DivergingPalette.from_name(
+    palette_Mach = color_palettes.DivergingPalette.from_name(
         palette_name="blue-white-red",
         value_range=(-1.0, 1.0),
         mid_value=0.0,
@@ -238,8 +237,8 @@ def main() -> None:
         bounds=(0.45, 0.1, 0.475, 0.5),
         x_label=r"$\log_{10}(t / t_\mathrm{sc})$",
         y_label=r"$E_\mathrm{mag} / \mathrm{E_\mathrm{mag, sat}}$",
-        x_label_alignment="top",
-        y_label_alignment="left",
+        x_label_alignment=box_positions.Positions.Side.Top,
+        y_label_alignment=box_positions.Positions.Side.Left,
     )
     plot_series(
         axs=axs,

@@ -10,8 +10,8 @@ from typing import Any
 
 ## personal
 from jormi.ww_io import manage_io
-from jormi.ww_plots import manage_plots, annotate_axis, add_color
-from jormi.ww_plots.color_palettes import SequentialPalette
+from jormi.ww_plots import add_color, annotate_axis, color_palettes, manage_plots
+from jormi.ww_types import box_positions
 
 ## local
 import plot_helpers
@@ -32,7 +32,7 @@ def plot_suites(
     *,
     ax: Any,
     suite_stats_list: list[plot_helpers.SuiteStats],
-    palette: SequentialPalette,
+    palette: color_palettes.SequentialPalette,
 ) -> None:
     for suite in suite_stats_list:
         print("Looking at:", suite.suite_name)
@@ -55,7 +55,7 @@ def plot_suites(
 def style_axis(
     *,
     ax: Any,
-    palette: SequentialPalette,
+    palette: color_palettes.SequentialPalette,
 ) -> None:
     ax.set_xlim((X_MIN, X_MAX))
     ax.set_ylim((Y_MIN, Y_MAX))
@@ -66,7 +66,7 @@ def style_axis(
         ax=ax,
         palette=palette,
         label=r"$p_\mathrm{nl}$",
-        cbar_side="top",
+        cbar_side=box_positions.Positions.Side.Top,
         label_size=24,
     )
     cbar_ticks = [1.0, 1.25, 1.5, 1.75, 2.0]
@@ -81,7 +81,7 @@ def style_axis(
         line_width=1.5,
         text_size=16,
         text_color="k",
-        anchor_at_corner="upper left",
+        anchor_at_corner=box_positions.MPLPositions.Anchor.Corner.TopLeft,
         anchor_point=(0.0, 0.95),
     )
 
@@ -95,7 +95,7 @@ def main() -> None:
     figures_dir, datasets_dir = plot_helpers.resolve_paper_dirs(Path(__file__))
     manage_io.create_directory(figures_dir)
     suite_stats_list = plot_helpers.load_suite_stats(datasets_dir)
-    palette = SequentialPalette.from_name(
+    palette = color_palettes.SequentialPalette.from_name(
         palette_name="purple-white-green",
         value_range=(1.0, 2.0),
     )
