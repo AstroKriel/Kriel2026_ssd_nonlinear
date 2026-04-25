@@ -13,7 +13,7 @@ import numpy
 ## personal
 from jormi.ww_io import manage_io
 from jormi.ww_plots import annotate_axis, manage_plots
-from jormi.ww_types import box_positions
+from jormi.ww_types import check_positions
 
 ##
 ## === PLOTTING ROUTINE
@@ -56,8 +56,8 @@ class PlotChainEvolution:
             x_pos=0.95,
             y_pos=0.05,
             label=f"{self.num_walkers} walkers",
-            x_alignment=box_positions.MPLPositions.Align.Side.Right,
-            y_alignment=box_positions.MPLPositions.Align.Side.Bottom,
+            x_alignment=check_positions.MPLPositions.Align.Side.Right,
+            y_alignment=check_positions.MPLPositions.Align.Side.Bottom,
         )
         axs[-1].set_xlabel("steps")
         fig_name = f"{self.routine_name}_fitted_chain_evolution.png"

@@ -20,7 +20,7 @@ from jormi import ww_lists
 from jormi.ww_io import manage_io, json_io
 from jormi.ww_data import interpolate_series, series_types
 from jormi.ww_plots import add_color, color_palettes, manage_plots
-from jormi.ww_types import box_positions
+from jormi.ww_types import check_positions
 
 ## local
 import plot_helpers
@@ -189,7 +189,7 @@ def style_axes(
         ax=axs[0],
         palette=palette_Mach,
         label=r"$\log_{10}(\mathcal{M})$",
-        cbar_side=box_positions.Positions.Side.Top,
+        cbar_side=check_positions.Positions.Side.Top,
         cbar_pad=1e-2,
         label_size=24,
     )
@@ -237,8 +237,8 @@ def main() -> None:
         bounds=(0.45, 0.1, 0.475, 0.5),
         x_label=r"$\log_{10}(t / t_\mathrm{sc})$",
         y_label=r"$E_\mathrm{mag} / \mathrm{E_\mathrm{mag, sat}}$",
-        x_label_alignment=box_positions.Positions.Side.Top,
-        y_label_alignment=box_positions.Positions.Side.Left,
+        x_label_alignment=check_positions.Positions.Side.Top,
+        y_label_alignment=check_positions.Positions.Side.Left,
     )
     plot_series(
         axs=axs,
