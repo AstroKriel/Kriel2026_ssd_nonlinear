@@ -16,7 +16,7 @@ from jormi import ww_lists
 from jormi.ww_io import manage_io
 from jormi.ww_arrays import compute_array_stats
 from jormi.ww_plots import annotate_axis, manage_plots
-from jormi.ww_types import check_positions
+from jormi.ww_types import box_positions
 
 ##
 ## === HELPER DATA CLASS
@@ -132,8 +132,8 @@ class PlotModelPosteriors:
             x_pos=0.5,
             y_pos=0.98,
             label=label,
-            x_alignment=check_positions.MPLPositions.Align.Center.Center,
-            y_alignment=check_positions.MPLPositions.Align.Side.Top,
+            x_alignment=box_positions.MPLPositions.Align.Center.Center,
+            y_alignment=box_positions.MPLPositions.Align.Side.Top,
         )
         if param_index > 0:
             ax.tick_params(labelleft=False, labelright=True)

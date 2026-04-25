@@ -15,7 +15,7 @@ import numpy
 from jormi.ww_io import manage_io
 from jormi.ww_data import fit_series, series_types
 from jormi.ww_plots import add_color, annotate_axis, color_palettes, manage_plots
-from jormi.ww_types import check_positions
+from jormi.ww_types import box_positions
 
 ## local
 import plot_helpers
@@ -106,8 +106,8 @@ def overlay_scalings(
         x_pos=0.585,
         y_pos=0.665,
         label=subsonic_label + r"$\, \mathrm{Re}^{1/2}$",
-        x_alignment=check_positions.MPLPositions.Align.Center.Center,
-        y_alignment=check_positions.MPLPositions.Align.Center.Center,
+        x_alignment=box_positions.MPLPositions.Align.Center.Center,
+        y_alignment=box_positions.MPLPositions.Align.Center.Center,
         rotate_deg=subsonic_rotation,
         text_color=palette.mpl_cmap(palette.mpl_norm(-1.0)),
     )
@@ -153,8 +153,8 @@ def overlay_scalings(
         x_pos=0.665,
         y_pos=0.15,
         label=supersonic_label + r"$\, \mathrm{Re}^{1/3}$",
-        x_alignment=check_positions.MPLPositions.Align.Center.Center,
-        y_alignment=check_positions.MPLPositions.Align.Center.Center,
+        x_alignment=box_positions.MPLPositions.Align.Center.Center,
+        y_alignment=box_positions.MPLPositions.Align.Center.Center,
         rotate_deg=supersonic_rotation,
         text_color=palette.mpl_cmap(palette.mpl_norm(1.0)),
     )
@@ -176,7 +176,7 @@ def style_axis(
         ax=ax,
         palette=palette,
         label=r"$\log_{10}(\mathcal{M})$",
-        cbar_side=check_positions.Positions.Side.Top,
+        cbar_side=box_positions.Positions.Side.Top,
         label_size=24,
     )
     annotate_axis.add_custom_legend(
@@ -188,7 +188,7 @@ def style_axis(
         line_width=1.5,
         text_size=16,
         text_color="k",
-        anchor_at_corner=check_positions.MPLPositions.Anchor.Corner.TopLeft,
+        anchor_at_corner=box_positions.MPLPositions.Anchor.Corner.TopLeft,
         anchor_point=(0.0, 1.0),
         num_cols=2,
         spacing=0.0,

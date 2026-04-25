@@ -16,7 +16,7 @@ from numpy.typing import NDArray
 from jormi.ww_io import manage_io
 from jormi.ww_data import fit_series, series_types
 from jormi.ww_plots import add_color, annotate_axis, color_palettes, manage_plots
-from jormi.ww_types import check_positions
+from jormi.ww_types import box_positions
 
 ## local
 import plot_helpers
@@ -195,8 +195,8 @@ def overlay_scalings(
         y_pos=0.375,
         label=duration_label + r"$\, t_0 / t_\mathrm{sc}$",
         text_size=20,
-        x_alignment=check_positions.MPLPositions.Align.Side.Left,
-        y_alignment=check_positions.MPLPositions.Align.Center.Center,
+        x_alignment=box_positions.MPLPositions.Align.Side.Left,
+        y_alignment=box_positions.MPLPositions.Align.Center.Center,
     )
     ## reference models (xu & lazarian; beresnyak 2012)
     annotate_axis.overlay_curve(
@@ -232,7 +232,7 @@ def overlay_scalings(
         line_width=1.5,
         text_size=16,
         text_color="k",
-        anchor_at_corner=check_positions.MPLPositions.Anchor.Corner.BottomRight,
+        anchor_at_corner=box_positions.MPLPositions.Anchor.Corner.BottomRight,
         anchor_point=(1.0, 0.025),
         num_cols=1,
         spacing=0.625,
@@ -250,7 +250,7 @@ def overlay_scalings(
         line_width=1.5,
         text_size=16,
         text_color="k",
-        anchor_at_corner=check_positions.MPLPositions.Anchor.Corner.TopLeft,
+        anchor_at_corner=box_positions.MPLPositions.Anchor.Corner.TopLeft,
         anchor_point=(0.0, 0.99),
         num_cols=1,
         spacing=0.5,
@@ -276,7 +276,7 @@ def style_axes(
         ax=axs[0],
         palette=palette,
         label=r"$\log_{10}(\mathrm{Re})$",
-        cbar_side=check_positions.Positions.Side.Top,
+        cbar_side=box_positions.Positions.Side.Top,
         cbar_pad=0.015,
         label_size=24,
     )
@@ -292,7 +292,7 @@ def style_axes(
         line_width=1.5,
         text_size=16,
         text_color="k",
-        anchor_at_corner=check_positions.MPLPositions.Anchor.Corner.TopLeft,
+        anchor_at_corner=box_positions.MPLPositions.Anchor.Corner.TopLeft,
         anchor_point=(0.0, 1.0),
         num_cols=3,
         spacing=0.0,
