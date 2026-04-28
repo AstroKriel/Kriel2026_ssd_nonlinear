@@ -374,15 +374,9 @@ class BaseMCMCRoutine(ABC):
     def _save_posterior_samples(
         self,
     ) -> None:
-        fitted_posterior_path = manage_io.combine_file_path_parts(
-            [self.output_directory, f"{self.routine_name}_fitted_posterior_samples.npy"],
-        )
-        output_posterior_path = manage_io.combine_file_path_parts(
-            [self.output_directory, f"{self.routine_name}_output_posterior_samples.npy"],
-        )
-        log_likelihood_path = manage_io.combine_file_path_parts(
-            [self.output_directory, f"{self.routine_name}_fitted_log_likelihoods.npy"],
-        )
+        fitted_posterior_path = self.output_directory / f"{self.routine_name}_fitted_posterior_samples.npy"
+        output_posterior_path = self.output_directory / f"{self.routine_name}_output_posterior_samples.npy"
+        log_likelihood_path = self.output_directory / f"{self.routine_name}_fitted_log_likelihoods.npy"
         assert self.fitted_posterior_samples is not None
         assert self.fitted_log_likelihoods is not None
         assert self.output_posterior_samples is not None

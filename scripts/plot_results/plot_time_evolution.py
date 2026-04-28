@@ -70,8 +70,8 @@ def load_sim_collections(
     sim_paths.extend(sim_paths_Nres1152)
     sim_collections: dict[str, list[SimInstance]] = defaultdict(list)
     for sim_path in sim_paths:
-        data_filepath = manage_io.combine_file_path_parts([sim_path, "sim_data.json"])
-        if not manage_io.does_file_exist(data_filepath):
+        data_filepath = sim_path / "sim_data.json"
+        if not data_filepath.is_file():
             print(f"Missing sim_data.json for: {sim_path}")
             continue
         raw = json_io.read_json_file_into_dict(data_filepath)

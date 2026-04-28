@@ -18,9 +18,7 @@ def get_max_loglikelihood(
     sim_dir: Path,
     model_name: str,
 ) -> float | None:
-    ll_path = manage_io.combine_file_path_parts(
-        [sim_dir, model_name, "bin_per_t0", f"stage2_{model_name}_fitted_log_likelihoods.npy"],
-    )
+    ll_path = sim_dir / model_name / "bin_per_t0" / f"stage2_{model_name}_fitted_log_likelihoods.npy"
     if not ll_path.exists():
         return None
     ll_data = numpy.load(ll_path)

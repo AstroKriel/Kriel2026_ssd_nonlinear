@@ -108,8 +108,8 @@ class PlotModelPosteriors:
         self._annotate_plot(axs, param_ranges, param_labels)
         if self.plot_posterior_kde:
             self._plot_kde_projections(axs, posterior_samples, posterior_kde, param_ranges)
-        file_path = manage_io.combine_file_path_parts([self.output_directory, fig_name])
-        manage_plots.save_figure(fig, file_path, verbose=True)
+        file_path = self.output_directory / fig_name
+        manage_plots.save_figure(fig=fig, fig_path=file_path)
 
     def _plot_pdf(
         self,

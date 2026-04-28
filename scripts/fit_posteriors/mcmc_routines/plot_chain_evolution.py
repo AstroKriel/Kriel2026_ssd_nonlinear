@@ -61,8 +61,8 @@ class PlotChainEvolution:
         )
         axs[-1].set_xlabel("steps")
         fig_name = f"{self.routine_name}_fitted_chain_evolution.png"
-        file_path = manage_io.combine_file_path_parts([self.output_directory, fig_name])
-        manage_plots.save_figure(fig, file_path, verbose=True)
+        file_path = self.output_directory / fig_name
+        manage_plots.save_figure(fig=fig, fig_path=file_path)
 
 
 ## } MODULE

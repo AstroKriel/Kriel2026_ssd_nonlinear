@@ -82,23 +82,16 @@ class EnsembleAverager:
             for sim_directory in self.sim_directories:
                 print("Looking at:", sim_directory)
                 ## load sim meta data once
-                sim_data_path = manage_io.combine_file_path_parts([sim_directory, "sim_data.json"])
-                if not manage_io.does_file_exist(sim_data_path):
+                sim_data_path = sim_directory / "sim_data.json"
+                if not sim_data_path.is_file():
                     print(f"Missing sim_data.json for: {sim_directory}")
                     continue
                 sim_data = json_io.read_json_file_into_dict(sim_data_path)
                 target_Mach = sim_data["details"]["target_Mach"]
                 target_Re = sim_data["details"]["target_Re"]
                 for binning_type in self.binning_types:
-                    mcmc_data_path = manage_io.combine_file_path_parts(
-                        [
-                            sim_directory,
-                            model_type,
-                            binning_type,
-                            f"stage2_{model_type}_fitted_posterior_samples.npy",
-                        ],
-                    )
-                    if not manage_io.does_file_exist(mcmc_data_path):
+                    mcmc_data_path = sim_directory / model_type / binning_type / f"stage2_{model_type}_fitted_posterior_samples.npy"
+                    if not mcmc_data_path.is_file():
                         print(
                             f"Simulation does not have mcmc data fitted with `{model_type}` and `{binning_type}`\n",
                         )
