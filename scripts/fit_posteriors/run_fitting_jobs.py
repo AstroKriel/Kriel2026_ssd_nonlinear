@@ -82,7 +82,11 @@ def run_fit(
     ]
     if num_bins is not None:
         cmd += ["-num_bins", str(num_bins)]
-    subprocess.run(cmd, check=True, cwd=SCRIPT_DIR)
+    subprocess.run(
+        cmd,
+        check=True,
+        cwd=SCRIPT_DIR,
+    )
 
 
 ##
