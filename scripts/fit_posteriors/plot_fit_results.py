@@ -122,7 +122,7 @@ def main() -> None:
         description="Re-render diagnostic plots from a saved fit result without re-running the MCMC.",
     )
     parser.add_argument(
-        "--fit_dir",
+        "--fit-dir",
         required=True,
         help="Path to the fit output directory (e.g. datasets/sims/.../linear/bin_per_t0).",
     )

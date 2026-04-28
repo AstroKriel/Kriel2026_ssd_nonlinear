@@ -34,7 +34,7 @@ def main() -> None:
     ## collect user arguments
     parser = argparse.ArgumentParser(description="Run MCMC fitting routine.")
     parser.add_argument(
-        "--data_directory",
+        "--data-directory",
         type=str,
         required=True,
     )
@@ -45,7 +45,7 @@ def main() -> None:
         choices=["linear", "quadratic", "free"],
     )
     parser.add_argument(
-        "--num_bins",
+        "--num-bins",
         type=int,
         default=None,
         help="Number of bins. Default: one bin per eddy-turnover time.",
