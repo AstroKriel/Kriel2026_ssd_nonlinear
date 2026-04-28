@@ -14,18 +14,18 @@ dependencies = [
 ]
 
 [tool.uv.sources]
-jormi = { git = "https://github.com/AstroKriel/PythonHelpers.git", rev = "16d5e720b586431de3f4a3b9c3f3e49ddf3a49a2" }
+jormi = { git = "https://github.com/AstroKriel/PythonHelpers.git", rev = "bc37ef365de97b14b10b38510001180c552572d7" }
 
 
 [tool.pyright]
 include = ["scripts"]
-reportExplicitAny = "none"          # basedpyright-specific: flags every `Any`; unavoidable in numpy/scipy code
-reportAny = "none"                  # basedpyright-specific: noisy cascade of the above
+reportExplicitAny = "none"  # basedpyright-specific: flags every `Any`; unavoidable in numpy/scipy code
+reportAny = "none"  # basedpyright-specific: noisy cascade of the above
 reportUnknownArgumentType = "none"  # cascade from untyped third-party packages (emcee, scipy); not actionable
-reportUnknownMemberType = "none"    # cascade from untyped third-party packages; not actionable
+reportUnknownMemberType = "none"  # cascade from untyped third-party packages; not actionable
 reportUnknownVariableType = "none"  # cascade from untyped third-party packages; not actionable
-reportImplicitOverride = "none"     # too verbose to require @override on every subclass method
-reportMissingTypeStubs = "none"     # emcee, tqdm, and other deps ship no stubs; not actionable
+reportImplicitOverride = "none"  # too verbose to require @override on every subclass method
+reportMissingTypeStubs = "none"  # emcee, tqdm, and other deps ship no stubs; not actionable
 reportImplicitStringConcatenation = "none"  # implicit string concat is used intentionally
-reportImplicitRelativeImport = "none"       # scripts use implicit relative imports intentionally
-reportUnusedCallResult = "none"             # argparse.add_argument returns Action; never used by convention
+reportImplicitRelativeImport = "none"  # scripts use implicit relative imports intentionally
+reportUnusedCallResult = "none"  # argparse.add_argument returns Action; never used by convention
