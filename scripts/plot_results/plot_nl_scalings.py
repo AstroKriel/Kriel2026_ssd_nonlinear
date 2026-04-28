@@ -192,7 +192,13 @@ def overlay_scalings(
         intercept_std=duration_fit.intercept.sigma,
         decimals=1,
     )
-    axs[1].axhline(y=duration_fit.intercept.value, color="black", linestyle="-", linewidth=1.5, zorder=-1)
+    axs[1].axhline(
+        y=duration_fit.intercept.value,
+        color="black",
+        linestyle="-",
+        linewidth=1.5,
+        zorder=-1,
+    )
     annotate_axis.add_text(
         ax=axs[1],
         x_pos=0.035,
@@ -274,8 +280,18 @@ def style_axes(
     axs[1].set_xlim([X_MIN, X_MAX])
     axs[0].set_ylim([AX0_Y_MIN, AX0_Y_MAX])
     axs[1].set_ylim([AX1_Y_MIN, AX1_Y_MAX])
-    axs[0].axvline(x=0, color="black", linestyle=":", linewidth=1.5)
-    axs[1].axvline(x=0, color="black", linestyle=":", linewidth=1.5)
+    axs[0].axvline(
+        x=0,
+        color="black",
+        linestyle=":",
+        linewidth=1.5,
+    )
+    axs[1].axvline(
+        x=0,
+        color="black",
+        linestyle=":",
+        linewidth=1.5,
+    )
     cbar = add_color.add_colorbar(
         ax=axs[0],
         palette=palette,

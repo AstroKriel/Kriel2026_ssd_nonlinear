@@ -63,7 +63,13 @@ def style_axis(
 ) -> None:
     ax.set_xlim((X_MIN, X_MAX))
     ax.set_ylim((Y_MIN, Y_MAX))
-    ax.axvline(x=0, ls="--", color="black", lw=1.5, zorder=5)
+    ax.axvline(
+        x=0,
+        ls="--",
+        color="black",
+        lw=1.5,
+        zorder=5,
+    )
     ax.set_xlabel(r"$\log_{10}(\mathcal{M})$")
     ax.set_ylabel(r"$\log_{10}(\mathrm{Re})$")
     cbar = add_color.add_colorbar(

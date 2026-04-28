@@ -37,23 +37,43 @@ class PlotFinalFits:
     def plot(
         self,
     ) -> None:
-        fig, axs = manage_plots.create_figure(num_rows=2, num_cols=1, share_x=True)
+        fig, axs = manage_plots.create_figure(
+            num_rows=2,
+            num_cols=1,
+            share_x=True,
+        )
         axs = axs[:, 0]
         self._plot_data(axs)
         self._plot_model(axs)
         self._label_plot(axs)
         fig_name = "final_fit.png"
         fig_file_path = self.output_directory / fig_name
-        manage_plots.save_figure(fig=fig, fig_path=fig_file_path)
+        manage_plots.save_figure(
+            fig=fig,
+            fig_path=fig_file_path,
+        )
 
     def _plot_data(
         self,
         axs: Any,
     ) -> None:
-        style = dict(color="blue", marker="o", ms=5, ls="-", lw=1.0, zorder=3)
+        style = dict(
+            color="blue",
+            marker="o",
+            ms=5,
+            ls="-",
+            lw=1.0,
+            zorder=3,
+        )
         axs[0].plot(self.x_values, numpy.log10(self.y_values), **style)
         axs[1].plot(self.x_values, self.y_values, **style)
-        axs[1].axhline(y=0, color="black", ls="--", lw=1.5, zorder=0)
+        axs[1].axhline(
+            y=0,
+            color="black",
+            ls="--",
+            lw=1.5,
+            zorder=0,
+        )
 
     def _plot_model(
         self,

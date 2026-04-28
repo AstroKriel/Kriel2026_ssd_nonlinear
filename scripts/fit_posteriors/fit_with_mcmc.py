@@ -32,16 +32,16 @@ from mcmc_routines.plot_final_fits import PlotFinalFits
 def main() -> None:
     ## collect user arguments
     parser = argparse.ArgumentParser(description="Run MCMC fitting routine.")
-    parser.add_argument("-data_directory", type=str, required=True)
-    parser.add_argument("-model", type=str, required=True, choices=["linear", "quadratic", "free"])
+    parser.add_argument("--data_directory", type=str, required=True)
+    parser.add_argument("--model", type=str, required=True, choices=["linear", "quadratic", "free"])
     parser.add_argument(
-        "-num_bins",
+        "--num_bins",
         type=int,
         default=None,
         help="Number of bins. Default: one bin per eddy-turnover time.",
     )
     parser.add_argument(
-        "-no_progress",
+        "--no-progress",
         action="store_true",
         default=False,
         help="Suppress the MCMC progress bar.",

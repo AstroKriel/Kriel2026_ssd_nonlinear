@@ -119,7 +119,10 @@ class EnsembleAverager:
                             ),
                         )
                         normalized_times: list[float] = [float(v) for v in full_time_values / t_turb]
-                        start_index = ww_lists.get_index_of_first_crossing(values=normalized_times, target=5)
+                        start_index = ww_lists.get_index_of_first_crossing(
+                            values=normalized_times,
+                            target=5,
+                        )
                         full_time_list: list[float] = [float(v) for v in full_time_values]
                         end_index = ww_lists.get_index_of_first_crossing(
                             values=full_time_list,

@@ -37,7 +37,11 @@ class PlotChainEvolution:
     def plot(
         self,
     ) -> None:
-        fig, axs = manage_plots.create_figure(num_rows=self.num_params, num_cols=1, share_x=True)
+        fig, axs = manage_plots.create_figure(
+            num_rows=self.num_params,
+            num_cols=1,
+            share_x=True,
+        )
         axs = axs[:, 0]
         for param_index in range(self.num_params):
             for walker_index in range(self.num_walkers):
@@ -62,7 +66,10 @@ class PlotChainEvolution:
         axs[-1].set_xlabel("steps")
         fig_name = f"{self.routine_name}_fitted_chain_evolution.png"
         file_path = self.output_directory / fig_name
-        manage_plots.save_figure(fig=fig, fig_path=file_path)
+        manage_plots.save_figure(
+            fig=fig,
+            fig_path=file_path,
+        )
 
 
 ## } MODULE

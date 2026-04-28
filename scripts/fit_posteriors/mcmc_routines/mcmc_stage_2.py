@@ -277,7 +277,7 @@ class Stage2MCMCRoutine(
         nl_start_time_samples = self.fitted_posterior_samples[:, 3]
         sat_start_time_samples = self.fitted_posterior_samples[:, 4]
         mcmc_utils.plot_param_percentiles_h(axs[0], sat_energy_samples)
-        for row_index in range(len(axs, ), ):
+        for row_index in range(len(axs)):
             mcmc_utils.plot_param_percentiles_v(axs[row_index], nl_start_time_samples)
             mcmc_utils.plot_param_percentiles_v(axs[row_index], sat_start_time_samples)
             axs[row_index].axvline(

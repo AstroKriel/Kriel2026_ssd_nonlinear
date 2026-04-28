@@ -143,7 +143,7 @@ class BaseMCMCRoutine(ABC):
         burn_in_steps: int = 3_000,
         show_progress: bool = True,
     ) -> None:
-        if not numpy.all(self._get_valid_params_mask(numpy.asarray(self.initial_params, ), ), ):
+        if not numpy.all(self._get_valid_params_mask(numpy.asarray(self.initial_params))):
             raise ValueError("Initial guess is invalid!")
         self.show_progress = show_progress
         if show_progress:
@@ -167,7 +167,10 @@ class BaseMCMCRoutine(ABC):
         )
         _ = deque(
             tqdm(
-                mcmc_sampler.sample(initial_state=perturbed_params, iterations=int(num_steps)),
+                mcmc_sampler.sample(
+                    initial_state=perturbed_params,
+                    iterations=int(num_steps),
+                ),
                 total=int(num_steps),
                 disable=not show_progress,
             ),

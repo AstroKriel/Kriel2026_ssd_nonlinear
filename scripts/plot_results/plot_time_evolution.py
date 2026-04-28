@@ -203,8 +203,18 @@ def style_axes(
         cbar_pad=1e-2,
         label_size=24,
     )
-    axs[0].axhline(y=0, ls=":", color="black", zorder=100)
-    axs[1].axhline(y=1, ls=":", color="black", zorder=100)
+    axs[0].axhline(
+        y=0,
+        ls=":",
+        color="black",
+        zorder=100,
+    )
+    axs[1].axhline(
+        y=1,
+        ls=":",
+        color="black",
+        zorder=100,
+    )
     axs[0].set_ylabel(r"$\log_{10}(\mathrm{E_\mathrm{mag}} / \mathrm{E_\mathrm{mag, sat}})$")
     axs[1].set_ylabel(r"$E_\mathrm{mag} / \mathrm{E_\mathrm{mag, sat}}$")
     axs[1].set_xlabel(r"$t / t_0$")
@@ -217,7 +227,12 @@ def style_axes(
     ticks = [1, 2, 3]
     ax_inset.set_xticks(ticks)
     ax_inset.set_xticklabels(f"{_tick}" for _tick in ticks)
-    ax_inset.axhline(y=1, ls=":", color="black", zorder=100)
+    ax_inset.axhline(
+        y=1,
+        ls=":",
+        color="black",
+        zorder=100,
+    )
 
 
 ##

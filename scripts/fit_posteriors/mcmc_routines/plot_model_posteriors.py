@@ -109,7 +109,10 @@ class PlotModelPosteriors:
         if self.plot_posterior_kde:
             self._plot_kde_projections(axs, posterior_samples, posterior_kde, param_ranges)
         file_path = self.output_directory / fig_name
-        manage_plots.save_figure(fig=fig, fig_path=file_path)
+        manage_plots.save_figure(
+            fig=fig,
+            fig_path=file_path,
+        )
 
     def _plot_pdf(
         self,
@@ -136,7 +139,10 @@ class PlotModelPosteriors:
             y_alignment=box_positions.MPLPositions.Align.Side.Top,
         )
         if param_index > 0:
-            ax.tick_params(labelleft=False, labelright=True)
+            ax.tick_params(
+                labelleft=False,
+                labelright=True,
+            )
         if param_index < posterior_samples.shape[1] - 1:
             ax.set_xticklabels([])
         pdf_threshold = 0.05 * numpy.max(estimated_pdf)
@@ -210,7 +216,10 @@ class PlotModelPosteriors:
                 if row_index == col_index:
                     # ax.set_xlim(param_ranges[row_index][0], param_ranges[row_index][1]) # debug
                     if col_index > 0:
-                        ax.tick_params(axis="y", labelright=True)
+                        ax.tick_params(
+                            axis="y",
+                            labelright=True,
+                        )
                 else:
                     # ax.set_xlim(param_ranges[col_index][0], param_ranges[col_index][1]) # debug
                     # ax.set_ylim(param_ranges[row_index][0], param_ranges[row_index][1]) # debug
@@ -288,7 +297,7 @@ class PlotModelPosteriors:
         grid_points = numpy.zeros((
             num_grid_points * params.num_marginal_samples,
             self.num_params,
-        ), )
+        ))
         grid_points[:, params.col_index] = numpy.repeat(col_flat, params.num_marginal_samples)
         grid_points[:, params.row_index] = numpy.repeat(row_flat, params.num_marginal_samples)
         grid_points[:, marginalized_param_indices] = numpy.tile(

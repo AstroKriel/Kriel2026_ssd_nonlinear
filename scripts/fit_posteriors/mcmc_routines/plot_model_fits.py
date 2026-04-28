@@ -41,7 +41,11 @@ class PlotModelFits:
     def plot(
         self,
     ) -> None:
-        fig, axs = manage_plots.create_figure(num_rows=3, num_cols=1, share_x=True)
+        fig, axs = manage_plots.create_figure(
+            num_rows=3,
+            num_cols=1,
+            share_x=True,
+        )
         axs = axs[:, 0]
         self._plot_data(axs)
         self._plot_model(axs)
@@ -56,14 +60,24 @@ class PlotModelFits:
         axs[2].set_xlabel(r"time")
         fig_name = f"{self.routine_name}_fit.png"
         fig_file_path = self.output_directory / fig_name
-        manage_plots.save_figure(fig=fig, fig_path=fig_file_path)
+        manage_plots.save_figure(
+            fig=fig,
+            fig_path=fig_file_path,
+        )
 
     def _plot_data(
         self,
         axs: Any,
     ) -> None:
         dy_dx_values = numpy.gradient(self.y_ave_values, self.x_values)
-        style = dict(color="blue", marker="o", ms=5, ls="-", lw=1.0, zorder=3)
+        style = dict(
+            color="blue",
+            marker="o",
+            ms=5,
+            ls="-",
+            lw=1.0,
+            zorder=3,
+        )
         axs[0].errorbar(
             self.x_values,
             self.y_ave_values,
@@ -76,7 +90,13 @@ class PlotModelFits:
             zorder=7,
         )
         axs[1].plot(self.x_values, dy_dx_values, **style)
-        axs[1].axhline(y=0.0, color="black", ls="--", lw=1.5, zorder=0)
+        axs[1].axhline(
+            y=0.0,
+            color="black",
+            ls="--",
+            lw=1.5,
+            zorder=0,
+        )
 
     def _plot_model(
         self,
@@ -116,7 +136,13 @@ class PlotModelFits:
             lw=1.0,
             zorder=3,
         )
-        axs[2].axhline(y=0, color="black", ls="--", lw=1.5, zorder=0)
+        axs[2].axhline(
+            y=0,
+            color="black",
+            ls="--",
+            lw=1.5,
+            zorder=0,
+        )
 
 
 ## } MODULE
