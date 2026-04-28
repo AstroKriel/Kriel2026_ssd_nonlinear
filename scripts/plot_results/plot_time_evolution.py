@@ -126,9 +126,19 @@ def plot_series(
         Emag_p84 = numpy.percentile(Emag_matrix, 84, axis=0)
         t_turb = sim_instances[0].t_0
         target_Mach = sim_instances[0].target_Mach
-        color = palette_Mach.mpl_cmap(palette_Mach.mpl_norm(numpy.log10(target_Mach)))
+        color = palette_Mach.mpl_cmap(
+            palette_Mach.mpl_norm(
+                numpy.log10(
+                    target_Mach,
+                ),
+            ),
+        )
         index_start = ww_lists.get_index_of_closest_value(
-            values=list(numpy.log10(Emag_p50)),
+            values=list(
+                numpy.log10(
+                    Emag_p50,
+                ),
+            ),
             target=-10,
         )
         t_shifted = (interp_time_values - interp_time_values[index_start]) / t_turb
@@ -216,7 +226,11 @@ def style_axes(
 
 
 def main() -> None:
-    figures_dir, datasets_dir = plot_helpers.resolve_paper_dirs(Path(__file__))
+    figures_dir, datasets_dir = plot_helpers.resolve_paper_dirs(
+        Path(
+            __file__,
+        ),
+    )
     manage_io.create_directory(figures_dir)
     all_results = json_io.read_json_file_into_dict(datasets_dir / "summary_stats.json")
     palette_Mach = color_palettes.DivergingPalette.from_name(

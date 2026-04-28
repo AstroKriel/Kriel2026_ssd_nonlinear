@@ -56,7 +56,12 @@ def compute_median_params_from_kde(
     num_samples: int = 10000,
 ) -> tuple[float, ...]:
     samples = kde.resample(num_samples)
-    return tuple(numpy.median(samples, axis=1))
+    return tuple(
+        numpy.median(
+            samples,
+            axis=1,
+        ),
+    )
 
 
 ##

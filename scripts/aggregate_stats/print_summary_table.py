@@ -22,7 +22,15 @@ def sci_basis(
     """Return (mantissa, exponent) so that v = mantissa * 10**exponent and 1 <= |mantissa| < 10."""
     if not math.isfinite(v) or v == 0:
         return 0.0, 0
-    k = int(math.floor(math.log10(abs(v))))
+    k = int(
+        math.floor(
+            math.log10(
+                abs(
+                    v,
+                ),
+            ),
+        ),
+    )
     m = v / (10**k)
     if abs(m) < 1:
         k -= 1
@@ -39,7 +47,11 @@ def decimals_from_max_err(
   """
     if not math.isfinite(e) or e <= 0:
         return 0
-    k = math.floor(math.log10(e))
+    k = math.floor(
+        math.log10(
+            e,
+        ),
+    )
     return max(0, -int(k))
 
 
@@ -59,7 +71,15 @@ def fmt_value_sci(
     """Format a plain value (no errors) in scientific notation for LaTeX math."""
     if v == 0 or not math.isfinite(v):
         return "$0$"
-    k = int(math.floor(math.log10(abs(v))))
+    k = int(
+        math.floor(
+            math.log10(
+                abs(
+                    v,
+                ),
+            ),
+        ),
+    )
     m = v / (10**k)
     m_str = f"{m:.{sig}g}"
     if k == 0:
@@ -248,7 +268,12 @@ def main() -> None:
         nres = int(s["input"]["Nres"])
         return (mach, re_, nres)
 
-    dataset_sorted = dict(sorted(dataset.items(), key=sort_key))
+    dataset_sorted = dict(
+        sorted(
+            dataset.items(),
+            key=sort_key,
+        ),
+    )
     table_tex = build_table(dataset_sorted)
     print(table_tex)
 

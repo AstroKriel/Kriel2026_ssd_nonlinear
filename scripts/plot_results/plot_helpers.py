@@ -170,7 +170,13 @@ def format_fit_label(
 ) -> str:
     coefficient = 10**intercept_best
     coefficient_std = numpy.log(10) * coefficient * (intercept_std if intercept_std is not None else 0.0)
-    exponent = int(numpy.floor(numpy.log10(coefficient)))
+    exponent = int(
+        numpy.floor(
+            numpy.log10(
+                coefficient,
+            ),
+        ),
+    )
     significand = coefficient / (10**exponent)
     significand_std = coefficient_std / (10**exponent)
     if exponent == 0:

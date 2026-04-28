@@ -37,7 +37,11 @@ def plot_suites(
     for suite in suite_stats_list:
         print("Looking at:", suite.suite_name)
         marker, zorder = plot_helpers.get_suite_style(suite.suite_name)
-        color = palette.mpl_cmap(palette.mpl_norm(suite.p_nl.p50))
+        color = palette.mpl_cmap(
+            palette.mpl_norm(
+                suite.p_nl.p50,
+            ),
+        )
         plot_helpers.plot_suite_errorbar(
             ax=ax,
             x=suite.log10_Mach.p50,
@@ -92,7 +96,11 @@ def style_axis(
 
 
 def main() -> None:
-    figures_dir, datasets_dir = plot_helpers.resolve_paper_dirs(Path(__file__))
+    figures_dir, datasets_dir = plot_helpers.resolve_paper_dirs(
+        Path(
+            __file__,
+        ),
+    )
     manage_io.create_directory(figures_dir)
     suite_stats_list = plot_helpers.load_suite_stats(datasets_dir)
     palette = color_palettes.SequentialPalette.from_name(

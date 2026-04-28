@@ -36,7 +36,11 @@ class Stage1MCMCRoutine(mcmc_base.BaseMCMCRoutine):
         assert len(
             initial_params,
         ) == 3, ("Stage 1 MCMC routine expects 3 initial params: log10(E_init), gamma_exp, and t_approx")
-        self.log10_e: float = numpy.log10(numpy.exp(1))
+        self.log10_e: float = numpy.log10(
+            numpy.exp(
+                1,
+            ),
+        )
         self.max_sim_time: float = numpy.max(time_values)
         super().__init__(
             routine_name="stage1",
@@ -130,7 +134,7 @@ class Stage1MCMCRoutine(mcmc_base.BaseMCMCRoutine):
         log10_gamma_samples = self.log10_e * self.fitted_posterior_samples[:, 1]
         transition_time_samples = self.fitted_posterior_samples[:, 2]
         mcmc_utils.plot_param_percentiles_h(axs[1], log10_gamma_samples)
-        for row_index in range(len(axs)):
+        for row_index in range(len(axs, ), ):
             mcmc_utils.plot_param_percentiles_v(axs[row_index], transition_time_samples)
 
     def _get_output_params(

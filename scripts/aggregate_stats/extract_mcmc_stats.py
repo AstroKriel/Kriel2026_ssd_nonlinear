@@ -120,7 +120,11 @@ class EnsembleAverager:
                         t_turb = sim_data["details"]["t_0"]
                         full_time_values = numpy.array(sim_data["time_series"]["time"])
                         full_Mach_energy = numpy.array(sim_data["time_series"]["Mach"])
-                        median_nl_start_time = float(numpy.median(extracted_data["nl_start_time"]))
+                        median_nl_start_time = float(
+                            numpy.median(
+                                extracted_data["nl_start_time"],
+                            ),
+                        )
                         normalized_times: list[float] = [float(v) for v in full_time_values / t_turb]
                         start_index = ww_lists.get_index_of_first_crossing(values=normalized_times, target=5)
                         full_time_list: list[float] = [float(v) for v in full_time_values]
@@ -132,14 +136,44 @@ class EnsembleAverager:
                         kinematic_Re_values = 0.5 * kinematic_Mach_values / nu
                         self.sim_params = {
                             "Mach": {
-                                "p16": float(numpy.percentile(kinematic_Mach_values, 16)),
-                                "p50": float(numpy.percentile(kinematic_Mach_values, 50)),
-                                "p84": float(numpy.percentile(kinematic_Mach_values, 84)),
+                                "p16": float(
+                                    numpy.percentile(
+                                        kinematic_Mach_values,
+                                        16,
+                                    ),
+                                ),
+                                "p50": float(
+                                    numpy.percentile(
+                                        kinematic_Mach_values,
+                                        50,
+                                    ),
+                                ),
+                                "p84": float(
+                                    numpy.percentile(
+                                        kinematic_Mach_values,
+                                        84,
+                                    ),
+                                ),
                             },
                             "Re": {
-                                "p16": float(numpy.percentile(kinematic_Re_values, 16)),
-                                "p50": float(numpy.percentile(kinematic_Re_values, 50)),
-                                "p84": float(numpy.percentile(kinematic_Re_values, 84)),
+                                "p16": float(
+                                    numpy.percentile(
+                                        kinematic_Re_values,
+                                        16,
+                                    ),
+                                ),
+                                "p50": float(
+                                    numpy.percentile(
+                                        kinematic_Re_values,
+                                        50,
+                                    ),
+                                ),
+                                "p84": float(
+                                    numpy.percentile(
+                                        kinematic_Re_values,
+                                        84,
+                                    ),
+                                ),
                             },
                         }
                         self.exracted_data = True
@@ -157,9 +191,24 @@ class EnsembleAverager:
                         continue
                     flat_samples = numpy.concatenate(lists_of_samples)
                     self.fit_summary[model_type][binning_type][quantity_key] = {
-                        "p16": float(numpy.percentile(flat_samples, 16)),
-                        "p50": float(numpy.percentile(flat_samples, 50)),
-                        "p84": float(numpy.percentile(flat_samples, 84)),
+                        "p16": float(
+                            numpy.percentile(
+                                flat_samples,
+                                16,
+                            ),
+                        ),
+                        "p50": float(
+                            numpy.percentile(
+                                flat_samples,
+                                50,
+                            ),
+                        ),
+                        "p84": float(
+                            numpy.percentile(
+                                flat_samples,
+                                84,
+                            ),
+                        ),
                     }
         return {
             "fit_summaries": self.fit_summary,

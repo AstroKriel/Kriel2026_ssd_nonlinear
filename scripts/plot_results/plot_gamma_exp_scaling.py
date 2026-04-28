@@ -41,7 +41,11 @@ def plot_suites(
     for suite in suite_stats_list:
         print("Looking at:", suite.suite_name)
         marker, zorder = plot_helpers.get_suite_style(suite.suite_name)
-        color = palette.mpl_cmap(palette.mpl_norm(suite.log10_Mach.p50))
+        color = palette.mpl_cmap(
+            palette.mpl_norm(
+                suite.log10_Mach.p50,
+            ),
+        )
         plot_helpers.plot_suite_errorbar(
             ax=ax,
             x=suite.log10_Re.p50,
@@ -109,7 +113,11 @@ def overlay_scalings(
         x_alignment=box_positions.MPLPositions.Align.Center.Center,
         y_alignment=box_positions.MPLPositions.Align.Center.Center,
         rotate_deg=subsonic_rotation,
-        text_color=palette.mpl_cmap(palette.mpl_norm(-1.0)),
+        text_color=palette.mpl_cmap(
+            palette.mpl_norm(
+                -1.0,
+            ),
+        ),
     )
     ## supersonic scaling
     supersonic_fit = fit_series.fit_line_with_fixed_slope(
@@ -156,7 +164,11 @@ def overlay_scalings(
         x_alignment=box_positions.MPLPositions.Align.Center.Center,
         y_alignment=box_positions.MPLPositions.Align.Center.Center,
         rotate_deg=supersonic_rotation,
-        text_color=palette.mpl_cmap(palette.mpl_norm(1.0)),
+        text_color=palette.mpl_cmap(
+            palette.mpl_norm(
+                1.0,
+            ),
+        ),
     )
 
 
@@ -201,7 +213,11 @@ def style_axis(
 
 
 def main() -> None:
-    figures_dir, datasets_dir = plot_helpers.resolve_paper_dirs(Path(__file__))
+    figures_dir, datasets_dir = plot_helpers.resolve_paper_dirs(
+        Path(
+            __file__,
+        ),
+    )
     manage_io.create_directory(figures_dir)
     suite_stats_list = plot_helpers.load_suite_stats(datasets_dir)
     palette = color_palettes.DivergingPalette.from_name(

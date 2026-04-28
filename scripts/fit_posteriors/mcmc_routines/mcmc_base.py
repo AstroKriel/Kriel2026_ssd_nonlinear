@@ -143,7 +143,7 @@ class BaseMCMCRoutine(ABC):
         burn_in_steps: int = 3_000,
         show_progress: bool = True,
     ) -> None:
-        if not numpy.all(self._get_valid_params_mask(numpy.asarray(self.initial_params))):
+        if not numpy.all(self._get_valid_params_mask(numpy.asarray(self.initial_params, ), ), ):
             raise ValueError("Initial guess is invalid!")
         self.show_progress = show_progress
         if show_progress:
@@ -230,7 +230,11 @@ class BaseMCMCRoutine(ABC):
         if self._prior_logpdf is not None:
             valid_params = numpy.atleast_2d(param_vectors[valid_params_mask])
             kde_vector = self._get_kde_params(valid_params)
-            kde_logpdfs = numpy.asarray(self._prior_logpdf(kde_vector.T))
+            kde_logpdfs = numpy.asarray(
+                self._prior_logpdf(
+                    kde_vector.T,
+                ),
+            )
             lp_values[valid_params_mask] = kde_logpdfs
         else:
             lp_values[valid_params_mask] = 0.0  # uniform prior
@@ -248,7 +252,11 @@ class BaseMCMCRoutine(ABC):
             return ll_values
         try:
             valid_params = param_vectors[valid_params_mask]
-            modelled_y = numpy.atleast_2d(self._model(valid_params))
+            modelled_y = numpy.atleast_2d(
+                self._model(
+                    valid_params,
+                ),
+            )
             measured_y = numpy.asarray(self.y_values)
             assert modelled_y.shape == (valid_params.shape[0], measured_y.shape[0]), (
                 f"Expected model output shape ({valid_params.shape[0]}, {measured_y.shape[0]}), got {modelled_y.shape}"
@@ -271,9 +279,21 @@ class BaseMCMCRoutine(ABC):
         ## acceptance fraction
         acc_fracs = numpy.asarray(mcmc_sampler.acceptance_fraction, dtype=float)
         if acc_fracs.size:
-            acc_med = float(numpy.median(acc_fracs))
-            acc_min = float(numpy.min(acc_fracs))
-            acc_max = float(numpy.max(acc_fracs))
+            acc_med = float(
+                numpy.median(
+                    acc_fracs,
+                ),
+            )
+            acc_min = float(
+                numpy.min(
+                    acc_fracs,
+                ),
+            )
+            acc_max = float(
+                numpy.max(
+                    acc_fracs,
+                ),
+            )
             self.acceptance_fraction = acc_fracs
             if self.show_progress:
                 if acc_med < 0.15:
@@ -293,13 +313,29 @@ class BaseMCMCRoutine(ABC):
             tau = numpy.asarray(mcmc_sampler.get_autocorr_time(tol=0), dtype=float)  # shape: (ndim,)
             self.auto_correlation_time = tau
             if self.show_progress:
-                tau_med = float(numpy.median(tau))
-                tau_max = float(numpy.max(tau))
+                tau_med = float(
+                    numpy.median(
+                        tau,
+                    ),
+                )
+                tau_max = float(
+                    numpy.max(
+                        tau,
+                    ),
+                )
                 ## ESS heuristic: N / (2*tau), where N = nwalkers * nsteps
                 N_raw = self.num_walkers * nstep
                 ess = N_raw / (2.0 * tau)
-                ess_med = float(numpy.median(ess))
-                ess_min = float(numpy.min(ess))
+                ess_med = float(
+                    numpy.median(
+                        ess,
+                    ),
+                )
+                ess_min = float(
+                    numpy.min(
+                        ess,
+                    ),
+                )
                 print(
                     f"Autocorr time (median/max): {tau_med:.1f}/{tau_max:.1f} steps; approx. ESS median/min: {ess_med:.0f}/{ess_min:.0f} out of N={N_raw} raw samples.",
                 )

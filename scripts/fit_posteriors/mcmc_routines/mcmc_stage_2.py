@@ -87,7 +87,11 @@ class Stage2MCMCRoutine(
         ave_energy_values: list[Any] | NDArray[Any],
         max_num_bins: int = 100,
     ) -> float:
-        self.max_sim_time: float = float(numpy.max(time_values))
+        self.max_sim_time: float = float(
+            numpy.max(
+                time_values,
+            ),
+        )
         if len(time_values) > max_num_bins:
             time_bin_edges = numpy.linspace(
                 numpy.min(time_values),
@@ -101,8 +105,16 @@ class Stage2MCMCRoutine(
                 time_bin_mask = (time_bin_indices == time_bin_index)
                 if not numpy.any(time_bin_mask):
                     continue
-                binned_time_values.append(numpy.mean(time_values[time_bin_mask]))
-                binned_ave_energy_values.append(numpy.mean(ave_energy_values[time_bin_mask]))
+                binned_time_values.append(
+                    numpy.mean(
+                        time_values[time_bin_mask],
+                    ),
+                )
+                binned_ave_energy_values.append(
+                    numpy.mean(
+                        ave_energy_values[time_bin_mask],
+                    ),
+                )
             used_time_values = numpy.asarray(binned_time_values)
             used_ave_energy_values = numpy.asarray(binned_ave_energy_values)
         else:
@@ -265,7 +277,7 @@ class Stage2MCMCRoutine(
         nl_start_time_samples = self.fitted_posterior_samples[:, 3]
         sat_start_time_samples = self.fitted_posterior_samples[:, 4]
         mcmc_utils.plot_param_percentiles_h(axs[0], sat_energy_samples)
-        for row_index in range(len(axs)):
+        for row_index in range(len(axs, ), ):
             mcmc_utils.plot_param_percentiles_v(axs[row_index], nl_start_time_samples)
             mcmc_utils.plot_param_percentiles_v(axs[row_index], sat_start_time_samples)
             axs[row_index].axvline(
