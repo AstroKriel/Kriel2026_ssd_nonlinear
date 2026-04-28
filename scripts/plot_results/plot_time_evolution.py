@@ -17,9 +17,15 @@ from numpy.typing import NDArray
 
 ## personal
 from jormi import ww_lists
-from jormi.ww_io import manage_io, json_io
-from jormi.ww_data import interpolate_series, series_types
-from jormi.ww_plots import add_color, color_palettes, manage_plots
+from jormi.ww_io import json_io
+from jormi.ww_io import manage_io
+from jormi.ww_data import interpolate_series
+from jormi.ww_data import series_types
+from jormi.ww_plots import (
+    add_color,
+    color_palettes,
+    manage_plots,
+)
 from jormi.ww_types import box_positions
 
 ## local
@@ -236,7 +242,7 @@ def style_axes(
 
 
 ##
-## === MAIN PROGRAM
+## === PROGRAM MAIN
 ##
 
 

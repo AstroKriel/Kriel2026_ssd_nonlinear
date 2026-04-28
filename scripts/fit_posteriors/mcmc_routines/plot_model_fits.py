@@ -13,6 +13,7 @@ import numpy
 ## personal
 from jormi.ww_plots import manage_plots
 from jormi.ww_io import manage_io
+from jormi.ww_types import box_positions
 
 ##
 ## === PLOTTING ROUTINE
@@ -21,6 +22,7 @@ from jormi.ww_io import manage_io
 
 @final
 class PlotModelFits:
+    """Render diagnostic fit plots with binned data, model curves, and residuals."""
 
     def __init__(
         self,
@@ -41,21 +43,47 @@ class PlotModelFits:
     def plot(
         self,
     ) -> None:
+        """Produce and save the diagnostic fit figure."""
         fig, axs = manage_plots.create_figure(
             num_rows=3,
             num_cols=1,
             share_x=True,
         )
         axs = axs[:, 0]
-        self._plot_data(axs)
-        self._plot_model(axs)
-        self._plot_residuals(axs)
-        self._mcmc_routine._annotate_fitted_params(axs)
-        self._mcmc_routine._annotate_output_params(axs)
+        self._plot_data(axs=axs)
+        self._plot_model(axs=axs)
+        self._plot_residuals(axs=axs)
+        self._mcmc_routine._annotate_fitted_params(axs=axs)
+        self._mcmc_routine._annotate_output_params(axs=axs)
+        bounds_label = self._mcmc_routine._get_bounds_label()
+        entries = [
+            ("binned data", "blue"),
+            ("fitted model", "red"),
+            ("estimated params", "green"),
+        ]
+        if bounds_label is not None:
+            entries.append(bounds_label)
+        y_base = 1.02
+        y_step = 0.08
+        text_style = dict(
+            x=1.0,
+            ha=box_positions.MPLPositions.Align.Side.Right,
+            va=box_positions.MPLPositions.Align.Side.Bottom,
+            fontsize=14,
+            transform=axs[0].transAxes,
+            clip_on=False,
+        )
+        for i, (text, color) in enumerate(reversed(entries)):
+            axs[0].text(
+                y=y_base + i * y_step,
+                s=text,
+                color=color,
+                **text_style,
+            )
         if self.data_label is not None:
             axs[0].set_ylabel(self.data_label)
             stripped_data_label = self.data_label.strip("$")
-            axs[1].set_ylabel(r"$\frac{d}{dt}\," + stripped_data_label + "$")
+            axs[1].set_ylabel(r"$\frac{{\rm d}}{{\rm d}t}\," + stripped_data_label + "$")
         axs[2].set_ylabel(r"median residuals")
         axs[2].set_xlabel(r"time")
         fig_name = f"{self.routine_name}_fit.png"
@@ -67,6 +95,7 @@ class PlotModelFits:
 
     def _plot_data(
         self,
+        *,
         axs: Any,
     ) -> None:
         dy_dx_values = numpy.gradient(self.y_ave_values, self.x_values)
@@ -100,6 +129,7 @@ class PlotModelFits:
 
     def _plot_model(
         self,
+        *,
         axs: Any,
     ) -> None:
         random_selector = numpy.random.default_rng(seed=42)
@@ -112,19 +142,34 @@ class PlotModelFits:
         modelled_curves_list = []
         for random_index in random_indices:
             params = self.fitted_posterior_samples[random_index]
-            y_model = self._mcmc_routine._model(params).squeeze()
+            y_model = self._mcmc_routine._model(param_vectors=params).squeeze()
             modelled_curves_list.append(y_model)
-            axs[0].plot(self.x_values, y_model, color="gray", alpha=0.2, lw=0.5, zorder=1)
+            axs[0].plot(
+                self.x_values,
+                y_model,
+                color="gray",
+                alpha=0.2,
+                lw=0.5,
+                zorder=1,
+            )
         modelled_curves = numpy.array(modelled_curves_list)
         p16, p84 = numpy.percentile(modelled_curves, [16, 84], axis=0)
-        axs[0].fill_between(self.x_values, p16, p84, color="red", alpha=0.25, zorder=2)
+        axs[0].fill_between(
+            self.x_values,
+            p16,
+            p84,
+            color="red",
+            alpha=0.25,
+            zorder=2,
+        )
 
     def _plot_residuals(
         self,
+        *,
         axs: Any,
     ) -> None:
         median_params = numpy.median(self.fitted_posterior_samples, axis=0)
-        modelled_y = self._mcmc_routine._model(median_params).squeeze()
+        modelled_y = self._mcmc_routine._model(param_vectors=median_params).squeeze()
         y_residuals = self.y_ave_values - modelled_y
         axs[2].plot(
             self.x_values,

@@ -17,6 +17,7 @@ from numpy.typing import NDArray
 
 
 def compute_binned_data(
+    *,
     x_values: NDArray[Any],
     y_values: NDArray[Any],
     num_bins: int,
@@ -71,20 +72,50 @@ def compute_median_params_from_kde(
 
 def plot_param_percentiles_h(
     ax: Any,
+    *,
     samples: NDArray[Any],
 ) -> None:
     p16, p50, p84 = numpy.percentile(samples, [16, 50, 84])
-    ax.axhline(p50, color="green", ls=":", lw=1.5, zorder=5)
-    ax.axhspan(p16, p84, color="green", ls="-", lw=1.5, alpha=0.3, zorder=4)
+    ax.axhline(
+        p50,
+        color="green",
+        ls=":",
+        lw=1.5,
+        zorder=5,
+    )
+    ax.axhspan(
+        p16,
+        p84,
+        color="green",
+        ls="-",
+        lw=1.5,
+        alpha=0.3,
+        zorder=4,
+    )
 
 
 def plot_param_percentiles_v(
     ax: Any,
+    *,
     samples: NDArray[Any],
 ) -> None:
     p16, p50, p84 = numpy.percentile(samples, [16, 50, 84])
-    ax.axvline(p50, color="green", ls=":", lw=1.5, zorder=5)
-    ax.axvspan(p16, p84, color="green", ls="-", lw=1.5, alpha=0.3, zorder=4)
+    ax.axvline(
+        p50,
+        color="green",
+        ls=":",
+        lw=1.5,
+        zorder=5,
+    )
+    ax.axvspan(
+        p16,
+        p84,
+        color="green",
+        ls="-",
+        lw=1.5,
+        alpha=0.3,
+        zorder=4,
+    )
 
 
 ## } MODULE

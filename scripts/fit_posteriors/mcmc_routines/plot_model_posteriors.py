@@ -15,7 +15,7 @@ from numpy.typing import NDArray
 from jormi import ww_lists
 from jormi.ww_io import manage_io
 from jormi.ww_arrays import compute_array_stats
-from jormi.ww_plots import annotate_axis, manage_plots
+from jormi.ww_plots import manage_plots
 from jormi.ww_types import box_positions
 
 ##
@@ -41,6 +41,7 @@ class KDEProjectionParams(
 
 @final
 class PlotModelPosteriors:
+    """Render corner plots of the MCMC posterior distribution."""
 
     def __init__(
         self,
@@ -63,6 +64,7 @@ class PlotModelPosteriors:
     def plot(
         self,
     ) -> None:
+        """Produce and save corner plots for both fitted and output posteriors."""
         self._plot_posteriors(
             posterior_samples=self.fitted_posterior_samples,
             posterior_kde=self.fitted_posterior_kde,
@@ -83,6 +85,7 @@ class PlotModelPosteriors:
 
     def _plot_posteriors(
         self,
+        *,
         posterior_samples: NDArray[Any],
         posterior_kde: Callable[[NDArray[Any]], NDArray[Any]],
         param_labels: list[str],
@@ -99,15 +102,34 @@ class PlotModelPosteriors:
             for col_index in range(self.num_params):
                 ax = axs[row_index, col_index]
                 if row_index == col_index:
-                    param_range = self._plot_pdf(ax, row_index, posterior_samples, param_labels)
+                    param_range = self._plot_pdf(
+                        ax=ax,
+                        param_index=row_index,
+                        posterior_samples=posterior_samples,
+                        param_labels=param_labels,
+                    )
                     param_ranges.append(param_range)
                 elif row_index > col_index:
-                    self._plot_jpdf(ax, row_index, col_index, posterior_samples)
+                    self._plot_jpdf(
+                        ax=ax,
+                        row_index=row_index,
+                        col_index=col_index,
+                        posterior_samples=posterior_samples,
+                    )
                 else:
                     ax.axis("off")
-        self._annotate_plot(axs, param_ranges, param_labels)
+        self._annotate_plot(
+            axs=axs,
+            param_ranges=param_ranges,
+            param_labels=param_labels,
+        )
         if self.plot_posterior_kde:
-            self._plot_kde_projections(axs, posterior_samples, posterior_kde, param_ranges)
+            self._plot_kde_projections(
+                axs=axs,
+                posterior_samples=posterior_samples,
+                posterior_kde=posterior_kde,
+                param_ranges=param_ranges,
+            )
         file_path = self.output_directory / fig_name
         manage_plots.save_figure(
             fig=fig,
@@ -116,6 +138,7 @@ class PlotModelPosteriors:
 
     def _plot_pdf(
         self,
+        *,
         ax: Any,
         param_index: int,
         posterior_samples: NDArray[Any],
@@ -127,16 +150,24 @@ class PlotModelPosteriors:
         )
         bin_centers = pdf_result.bin_centers
         estimated_pdf = pdf_result.densities
-        ax.step(bin_centers, estimated_pdf, where="mid", lw=2.0, color="black")
+        ax.step(
+            bin_centers,
+            estimated_pdf,
+            where="mid",
+            lw=2.0,
+            color="black",
+        )
         p16, p50, p84 = numpy.percentile(posterior_samples[:, param_index], [16, 50, 84])
         label = f"{param_labels[param_index]} $= {p50:.2f}_{{-{p50-p16:.2f}}}^{{+{p84-p50:.2f}}}$"
-        annotate_axis.add_text(
-            ax=ax,
-            x_pos=0.5,
-            y_pos=0.98,
-            label=label,
-            x_alignment=box_positions.MPLPositions.Align.Center.Center,
-            y_alignment=box_positions.MPLPositions.Align.Side.Top,
+        ax.text(
+            x=0.5,
+            y=1.02,
+            s=label,
+            ha="center",
+            va="bottom",
+            fontsize=20,
+            transform=ax.transAxes,
+            clip_on=False,
         )
         if param_index > 0:
             ax.tick_params(
@@ -176,6 +207,7 @@ class PlotModelPosteriors:
 
     def _plot_jpdf(
         self,
+        *,
         ax: Any,
         row_index: int,
         col_index: int,
@@ -204,9 +236,10 @@ class PlotModelPosteriors:
 
     def _annotate_plot(
         self,
+        *,
         axs: Any,
-        _param_ranges: list[tuple[float, float]],
         param_labels: list[str],
+        param_ranges: list[tuple[float, float]] | None = None,
     ) -> None:
         for row_index in range(self.num_params):
             for col_index in range(self.num_params):
@@ -234,6 +267,7 @@ class PlotModelPosteriors:
 
     def _plot_kde_projections(
         self,
+        *,
         axs: Any,
         posterior_samples: NDArray[Any],
         posterior_kde: Callable[[NDArray[Any]], NDArray[Any]],
@@ -252,7 +286,7 @@ class PlotModelPosteriors:
                     col_index=col_index,
                     row_index=row_index,
                 )
-                col_grid, row_grid, kde_density = self._compute_2d_kde_projection(params)
+                col_grid, row_grid, kde_density = self._compute_2d_kde_projection(params=params)
                 axs[row_index, col_index].contour(
                     col_grid,
                     row_grid,
@@ -265,6 +299,7 @@ class PlotModelPosteriors:
 
     def _compute_2d_kde_projection(
         self,
+        *,
         params: KDEProjectionParams,
     ) -> tuple[NDArray[Any], NDArray[Any], NDArray[Any]]:
         marginalized_param_indices = [

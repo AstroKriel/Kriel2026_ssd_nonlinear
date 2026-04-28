@@ -27,6 +27,7 @@ from . import mcmc_utils
 
 class Stage2MCMCRoutine(
         mcmc_base.BaseMCMCRoutine, ):
+    """Fit a three-phase SSD model (exponential, nonlinear, saturated) to magnetic energy data."""
 
     def __init__(
         self,
@@ -35,15 +36,16 @@ class Stage2MCMCRoutine(
         time_values: list[Any] | NDArray[Any],
         ave_energy_values: list[Any] | NDArray[Any],
         std_energy_values: list[Any] | NDArray[Any],
-        initial_params: tuple[float, float, float, float],
+        initial_params: tuple[float, float, float, float] | None = None,
         prior_kde: gaussian_kde | None = None,
         plot_posterior_kde: bool = True,
         fixed_nl_exponent: float | None = None,
         routine_name: str = "stage2",
     ) -> None:
-        assert len(initial_params) == 4, (
-            "Stage 2 MCMC routine expects 4 initial params: log10(E_init), log10(E_sat), gamma_exp, and t_nl"
-        )
+        if initial_params is not None and len(initial_params) != 4:
+            raise ValueError(
+                "Stage 2 MCMC routine expects 4 initial params: log10(E_init), log10(E_sat), gamma_exp, and t_nl",
+            )
         guess_sat_time = self._define_constraints(
             time_values=time_values,
             ave_energy_values=ave_energy_values,
@@ -55,26 +57,30 @@ class Stage2MCMCRoutine(
             r"$t_{\mathrm{nl}}$",
             r"$t_{\mathrm{sat}}$",
         ]
-        all_initial_params = [
-            initial_params[0],  # log10(E_init)
-            initial_params[1],  # log10(E_sat)
-            initial_params[2],  # exp_gamma
-            initial_params[3],  # t_nl
-            guess_sat_time,  # t_sat
-        ]
         self.fixed_nl_exponent: float | None = fixed_nl_exponent
         if self.fixed_nl_exponent is None:
             fitted_param_labels.append(r"$p$")
-            all_initial_params.append(1.5)  # nl_exponent
         else:
-            assert 1.0 <= self.fixed_nl_exponent <= 2.0, "provided `fixed_nl_exponent` should be in [1, 2]"
+            if not (1.0 <= self.fixed_nl_exponent <= 2.0):
+                raise ValueError("provided `fixed_nl_exponent` should be in [1, 2]")
+        if initial_params is not None:
+            all_initial_params: tuple[float, ...] | None = (
+                initial_params[0],
+                initial_params[1],
+                initial_params[2],
+                initial_params[3],
+                guess_sat_time,
+                *([] if self.fixed_nl_exponent is not None else [1.5]),
+            )
+        else:
+            all_initial_params = None
         super().__init__(
             routine_name=routine_name,
             output_directory=output_directory,
             x_values=time_values,
             y_values=ave_energy_values,
             likelihood_sigma=std_energy_values,
-            initial_params=tuple(all_initial_params),
+            initial_params=all_initial_params,
             prior_kde=prior_kde,
             plot_posterior_kde=plot_posterior_kde,
             data_label=r"$E_{\mathrm{mag}}$",
@@ -83,6 +89,7 @@ class Stage2MCMCRoutine(
 
     def _define_constraints(
         self,
+        *,
         time_values: list[Any] | NDArray[Any],
         ave_energy_values: list[Any] | NDArray[Any],
         max_num_bins: int = 100,
@@ -152,6 +159,7 @@ class Stage2MCMCRoutine(
 
     def _model(
         self,
+        *,
         param_vectors: NDArray[Any],
     ) -> NDArray[Any]:
         param_vectors = numpy.atleast_2d(param_vectors)  # (N, P)
@@ -208,6 +216,7 @@ class Stage2MCMCRoutine(
 
     def _get_valid_params_mask(
         self,
+        *,
         param_vectors: NDArray[Any],
         verbose: bool = False,
     ) -> NDArray[Any]:
@@ -262,6 +271,7 @@ class Stage2MCMCRoutine(
 
     def _get_kde_params(
         self,
+        *,
         param_vectors: NDArray[Any],
     ) -> NDArray[Any]:
         param_vectors = numpy.atleast_2d(param_vectors)
@@ -270,26 +280,32 @@ class Stage2MCMCRoutine(
 
     def _annotate_fitted_params(
         self,
+        *,
         axs: Any,
     ) -> None:
         assert self.fitted_posterior_samples is not None
         sat_energy_samples = 10**self.fitted_posterior_samples[:, 1]
         nl_start_time_samples = self.fitted_posterior_samples[:, 3]
         sat_start_time_samples = self.fitted_posterior_samples[:, 4]
-        mcmc_utils.plot_param_percentiles_h(axs[0], sat_energy_samples)
+        mcmc_utils.plot_param_percentiles_h(axs[0], samples=sat_energy_samples)
         for row_index in range(len(axs)):
-            mcmc_utils.plot_param_percentiles_v(axs[row_index], nl_start_time_samples)
-            mcmc_utils.plot_param_percentiles_v(axs[row_index], sat_start_time_samples)
+            mcmc_utils.plot_param_percentiles_v(axs[row_index], samples=nl_start_time_samples)
+            mcmc_utils.plot_param_percentiles_v(axs[row_index], samples=sat_start_time_samples)
             axs[row_index].axvline(
                 self.max_nl_time,
-                color="red",
+                color="orange",
                 ls="--",
             )
             axs[row_index].axvline(
                 self.max_sat_time,
-                color="red",
+                color="orange",
                 ls="--",
             )
+
+    def _get_bounds_label(
+        self,
+    ) -> tuple[str, str] | None:
+        return ("prior bounds", "orange")
 
 
 ##
@@ -299,6 +315,7 @@ class Stage2MCMCRoutine(
 
 class Stage2MCMCRoutine_free(
         Stage2MCMCRoutine, ):
+    """Stage2MCMCRoutine with a free nonlinear exponent."""
 
     def __init__(
         self,
@@ -313,6 +330,7 @@ class Stage2MCMCRoutine_free(
 
 class Stage2MCMCRoutine_linear(
         Stage2MCMCRoutine, ):
+    """Stage2MCMCRoutine with a fixed linear nonlinear exponent (p=1)."""
 
     def __init__(
         self,
@@ -327,6 +345,7 @@ class Stage2MCMCRoutine_linear(
 
 class Stage2MCMCRoutine_quadratic(
         Stage2MCMCRoutine, ):
+    """Stage2MCMCRoutine with a fixed quadratic nonlinear exponent (p=2)."""
 
     def __init__(
         self,

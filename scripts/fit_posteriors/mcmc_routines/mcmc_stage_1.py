@@ -22,6 +22,7 @@ from . import mcmc_utils
 
 
 class Stage1MCMCRoutine(mcmc_base.BaseMCMCRoutine):
+    """Fit a two-parameter exponential + saturation model to log10-transformed magnetic energy data."""
 
     def __init__(
         self,
@@ -30,12 +31,13 @@ class Stage1MCMCRoutine(mcmc_base.BaseMCMCRoutine):
         time_values: list[Any] | NDArray[Any],
         ave_log10_energy_values: list[Any] | NDArray[Any],
         std_log10_energy_values: list[Any] | NDArray[Any],
-        initial_params: tuple[float, ...],
+        initial_params: tuple[float, ...] | None = None,
         plot_posterior_kde: bool = True,
     ) -> None:
-        assert len(
-            initial_params,
-        ) == 3, ("Stage 1 MCMC routine expects 3 initial params: log10(E_init), gamma_exp, and t_approx")
+        if initial_params is not None and len(initial_params) != 3:
+            raise ValueError(
+                "Stage 1 MCMC routine expects 3 initial params: log10(E_init), gamma_exp, and t_approx",
+            )
         self.log10_e: float = numpy.log10(
             numpy.exp(
                 1,
@@ -60,6 +62,7 @@ class Stage1MCMCRoutine(mcmc_base.BaseMCMCRoutine):
 
     def _model(
         self,
+        *,
         param_vectors: NDArray[Any],
     ) -> NDArray[Any]:
         param_vectors = numpy.atleast_2d(param_vectors)  # (N, P)
@@ -93,6 +96,7 @@ class Stage1MCMCRoutine(mcmc_base.BaseMCMCRoutine):
 
     def _get_valid_params_mask(
         self,
+        *,
         param_vectors: NDArray[Any],
         verbose: bool = False,
     ) -> NDArray[Any]:
@@ -128,18 +132,20 @@ class Stage1MCMCRoutine(mcmc_base.BaseMCMCRoutine):
 
     def _annotate_fitted_params(
         self,
+        *,
         axs: Any,
     ) -> None:
         assert self.fitted_posterior_samples is not None
         log10_gamma_samples = self.log10_e * self.fitted_posterior_samples[:, 1]
         transition_time_samples = self.fitted_posterior_samples[:, 2]
-        mcmc_utils.plot_param_percentiles_h(axs[1], log10_gamma_samples)
+        mcmc_utils.plot_param_percentiles_h(axs[1], samples=log10_gamma_samples)
         for row_index in range(len(axs)):
-            mcmc_utils.plot_param_percentiles_v(axs[row_index], transition_time_samples)
+            mcmc_utils.plot_param_percentiles_v(axs[row_index], samples=transition_time_samples)
 
-    def _get_output_params(
+    def get_output_params(
         self,
     ) -> tuple[NDArray[Any], list[str]]:
+        """Return output posterior samples reparametrized to include log10(E_sat)."""
         assert self.fitted_posterior_samples is not None
         log10_init_energy_samples = self.fitted_posterior_samples[:, 0]
         gamma_samples = self.fitted_posterior_samples[:, 1]
@@ -161,11 +167,12 @@ class Stage1MCMCRoutine(mcmc_base.BaseMCMCRoutine):
 
     def _annotate_output_params(
         self,
+        *,
         axs: Any,
     ) -> None:
         assert self.output_posterior_samples is not None
         log10_sat_energy_samples = self.output_posterior_samples[:, 1]
-        mcmc_utils.plot_param_percentiles_h(axs[0], log10_sat_energy_samples)
+        mcmc_utils.plot_param_percentiles_h(axs[0], samples=log10_sat_energy_samples)
 
 
 ## } MODULE

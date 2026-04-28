@@ -21,6 +21,7 @@ from jormi.ww_io import manage_io
 
 @final
 class PlotFinalFits:
+    """Render final fit plots comparing measured and modelled energy evolution."""
 
     def __init__(
         self,
@@ -37,15 +38,16 @@ class PlotFinalFits:
     def plot(
         self,
     ) -> None:
+        """Produce and save the final fit figure."""
         fig, axs = manage_plots.create_figure(
             num_rows=2,
             num_cols=1,
             share_x=True,
         )
         axs = axs[:, 0]
-        self._plot_data(axs)
-        self._plot_model(axs)
-        self._label_plot(axs)
+        self._plot_data(axs=axs)
+        self._plot_model(axs=axs)
+        self._label_plot(axs=axs)
         fig_name = "final_fit.png"
         fig_file_path = self.output_directory / fig_name
         manage_plots.save_figure(
@@ -55,6 +57,7 @@ class PlotFinalFits:
 
     def _plot_data(
         self,
+        *,
         axs: Any,
     ) -> None:
         style = dict(
@@ -77,6 +80,7 @@ class PlotFinalFits:
 
     def _plot_model(
         self,
+        *,
         axs: Any,
     ) -> None:
         rng = numpy.random.default_rng(seed=42)
@@ -88,8 +92,9 @@ class PlotFinalFits:
         )
         modelled_curves = numpy.array(
             [
-                self._mcmc_routine._model(self.fitted_posterior_samples[sample_index]).squeeze()
-                for sample_index in random_indices
+                self._mcmc_routine._model(
+                    param_vectors=self.fitted_posterior_samples[sample_index],
+                ).squeeze() for sample_index in random_indices
             ],
         )
         p16, p84 = numpy.percentile(modelled_curves, [16, 84], axis=0)
@@ -101,10 +106,18 @@ class PlotFinalFits:
             alpha=0.25,
             zorder=3,
         )
-        axs[1].fill_between(self.x_values, p16, p84, color="red", alpha=0.25, zorder=3)
+        axs[1].fill_between(
+            self.x_values,
+            p16,
+            p84,
+            color="red",
+            alpha=0.25,
+            zorder=3,
+        )
 
     def _label_plot(
         self,
+        *,
         axs: Any,
     ) -> None:
         axs[0].set_ylabel(r"$\log_{10}(E_{\mathrm{mag}})$")

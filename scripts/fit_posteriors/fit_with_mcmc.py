@@ -12,7 +12,8 @@ from pathlib import Path
 import numpy
 
 ## personal
-from jormi.ww_io import manage_io, json_io
+from jormi.ww_io import json_io
+from jormi.ww_io import manage_io
 
 ## local
 from mcmc_routines.mcmc_stage_1 import Stage1MCMCRoutine
@@ -25,15 +26,24 @@ from mcmc_routines.mcmc_utils import compute_median_params_from_kde
 from mcmc_routines.plot_final_fits import PlotFinalFits
 
 ##
-## === MAIN PROGRAM
+## === PROGRAM MAIN
 ##
 
 
 def main() -> None:
     ## collect user arguments
     parser = argparse.ArgumentParser(description="Run MCMC fitting routine.")
-    parser.add_argument("--data_directory", type=str, required=True)
-    parser.add_argument("--model", type=str, required=True, choices=["linear", "quadratic", "free"])
+    parser.add_argument(
+        "--data_directory",
+        type=str,
+        required=True,
+    )
+    parser.add_argument(
+        "--model",
+        type=str,
+        required=True,
+        choices=["linear", "quadratic", "free"],
+    )
     parser.add_argument(
         "--num_bins",
         type=int,

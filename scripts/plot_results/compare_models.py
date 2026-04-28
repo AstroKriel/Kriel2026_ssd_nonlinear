@@ -11,7 +11,12 @@ from pathlib import Path
 import numpy
 
 ## personal
-from jormi.ww_io import manage_io, json_io
+from jormi.ww_io import json_io
+from jormi.ww_io import manage_io
+
+##
+## === HELPERS
+##
 
 
 def get_max_loglikelihood(
@@ -39,6 +44,11 @@ def get_linear_model_weight(
     ) / (numpy.exp(-0.5 * (aic_linear - min_aic)) + numpy.exp(-0.5 * (aic_quadratic - min_aic)))
 
 
+##
+## === PROGRAM MAIN
+##
+
+
 def main() -> None:
     script_dir = Path(__file__).parent
     dataset_dir = (script_dir / ".." / ".." / "datasets").resolve()
@@ -63,6 +73,10 @@ def main() -> None:
     print(f"Compared: {num_sims}")
     print(f"Agreement: {agreement}/{num_sims} = {100 * agreement / num_sims:.1f}%")
 
+
+##
+## === ENTRY POINT
+##
 
 if __name__ == "__main__":
     main()

@@ -1,4 +1,4 @@
-## { MODULE
+## { SCRIPT
 
 ##
 ## === DEPENDENCIES
@@ -9,25 +9,35 @@ from pathlib import Path
 
 ## third-party
 import numpy
+from numpy.typing import NDArray
 
 ## personal
-from jormi.ww_io import manage_io, json_io
 from jormi import ww_lists
+from jormi.ww_io import json_io
+from jormi.ww_io import manage_io
+
+##
+## === HELPERS
+##
 
 
 def extract_from_mcmc_data(
-    samples: numpy.ndarray,
+    samples: NDArray[numpy.float64],
     model: str,
-) -> dict[str, numpy.ndarray]:
+) -> dict[str, NDArray[numpy.float64]]:
     init_energy = 10**samples[:, 0]
     sat_energy = 10**samples[:, 1]
     gamma_exp = samples[:, 2]
     nl_start_time = samples[:, 3]
     sat_start_time = samples[:, 4]
-    if model == "linear": nl_exponent = numpy.ones_like(gamma_exp)
-    elif model == "quadratic": nl_exponent = 2.0 * numpy.ones_like(gamma_exp)
-    elif model == "free": nl_exponent = samples[:, 5]
-    else: raise ValueError(f"Unknown model type: {model}")
+    if model == "linear":
+        nl_exponent = numpy.ones_like(gamma_exp)
+    elif model == "quadratic":
+        nl_exponent = 2.0 * numpy.ones_like(gamma_exp)
+    elif model == "free":
+        nl_exponent = samples[:, 5]
+    else:
+        raise ValueError(f"Unknown model type: {model}")
     nl_start_energy = init_energy * numpy.exp(gamma_exp * nl_start_time)
     nl_duration = sat_start_time - nl_start_time
     gamma_nl = (sat_energy - nl_start_energy) / (nl_duration**nl_exponent)
@@ -40,6 +50,11 @@ def extract_from_mcmc_data(
         "sat_energy": sat_energy,
         "nl_exponent": nl_exponent,
     }
+
+
+##
+## === AGGREGATION CLASS
+##
 
 
 class EnsembleAverager:
@@ -62,22 +77,22 @@ class EnsembleAverager:
 
     def __init__(
         self,
-        sim_directories: list,
+        sim_directories: list[Path],
     ) -> None:
         self.sim_directories = sim_directories
-        self.fit_summary: dict[str, dict] = {}
+        self.fit_summary: dict[str, dict[str, dict[str, dict[str, float | None]]]] = {}
         self.sim_params: dict[str, dict[str, float]] | None = None
         self.exracted_data = False
 
     def run(
         self,
-    ) -> dict[str, dict | None]:
+    ) -> dict[str, dict[str, dict[str, dict[str, float | None]]] | None]:
         ## for each fit-model
         for model_type in self.model_types:
             print("Processing model-fit:", model_type)
             print(" ")
             ## initialise quantities we want to accumulate over the different simulation instances
-            combined_by_binning: dict[str, dict[str, list]] = {}
+            combined_by_binning: dict[str, dict[str, list[NDArray[numpy.float64]]]] = {}
             ## loop over the different simulation instances
             for sim_directory in self.sim_directories:
                 print("Looking at:", sim_directory)
@@ -212,6 +227,11 @@ class EnsembleAverager:
         }
 
 
+##
+## === PROGRAM MAIN
+##
+
+
 def main() -> None:
     script_dir = Path(__file__).parent
     datasets_dir = (script_dir / ".." / ".." / "datasets").resolve()
@@ -237,7 +257,11 @@ def main() -> None:
     )
 
 
+##
+## === ENTRY POINT
+##
+
 if __name__ == "__main__":
     main()
 
-## } MODULE
+## } SCRIPT
